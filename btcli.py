@@ -43,10 +43,24 @@ def raw(conn, *args):
     conn.raw_write_packet(pkt)
 
 
+def parse_addr(addr, conn):
+    if addr.lower() == "zero":
+        return "00:00:00:00:00:00"
+    elif addr.lower() == "local":
+        return conn.local_addr
+    elif addr.lower() == "remote":
+        return conn.remote_addr
+    elif addr.lower() == "bcast":
+        return "ff:ff:ff:ff:ff:ff"
+    else:
+        return addr
+
 @cmd
-def send0(conn, *args):
+def send(conn, from_, to, *args):
+    from_ = parse_addr(from_, conn)
+    to = parse_addr(to, conn)
     payload = bytearray([int(x, 16) for x in args])
-    pkt = make_packet("00:00:00:00:00:00", conn.remote_addr, payload)
+    pkt = make_packet(from_, to, payload)
     dump_and_write(conn, pkt)
 
 @cmd
