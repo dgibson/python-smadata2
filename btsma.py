@@ -5,9 +5,10 @@ from __future__ import division
 
 import sys
 import bluetooth
+import readline
 
 __all__ = ['BTSMAConnection', 'BTSMAError', 'dump_packet',
-           'make_packet', 'make_hello_packet']
+           'make_packet', 'make_hello_packet', 'make_signalreq_packet']
 
 HDRLEN = 17
 
@@ -130,8 +131,12 @@ def make_packet(fromaddr, toaddr, payload):
 
 def make_hello_packet(conn):
     hello = bytearray('\x02\x00\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00')
-    return make_packet("00:00:00:00:00:00", conn.remote_addr,
-                       hello)
+    return make_packet("00:00:00:00:00:00", conn.remote_addr, hello)
+
+
+def make_signalreq_packet(conn):
+    signalreq = bytearray('\x03\x00\x05\x00')
+    return make_packet("00:00:00:00:00:00", conn.remote_addr, signalreq)
 
 
 class BTSMAConnection(object):

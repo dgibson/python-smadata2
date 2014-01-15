@@ -4,6 +4,7 @@ from __future__ import print_function
 import sys
 import os
 import signal
+import readline
 from btsma import *
 
 def rx_thread(conn):
@@ -51,6 +52,12 @@ def send0(conn, *args):
 @cmd
 def hello(conn, *args):
     pkt = make_hello_packet(conn)
+    dump_and_write(conn, pkt)
+
+
+@cmd
+def signalreq(conn, *args):
+    pkt = make_signalreq_packet(conn)
     dump_and_write(conn, pkt)
 
 
