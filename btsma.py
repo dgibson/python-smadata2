@@ -5,14 +5,17 @@ from __future__ import print_function
 import sys
 import bluetooth
 
-__all__ = ['BTSMAConnection', 'BTSMAError', 'parse_header']
+__all__ = ['BTSMAConnection', 'BTSMAError', 'BTSMAPacket']
+
+HDRLEN = 17
 
 class BTSMAError(Exception):
     pass
 
 
 def _check_header(hdr):
-    assert len(hdr) >= 4
+    if len(hdr) < HDRLEN:
+        raise BTSMAError("Packet too short for header")
     if (hdr[0] != 0x7e) or (hdr[2] != 0x00):
         raise BTSMAError("Missing packet start marker")
     if (hdr[3] != (hdr[1] ^ 0x7e)):
@@ -21,15 +24,25 @@ def _check_header(hdr):
 
 
 def ba2str(addr):
+    if len(addr) != 6:
+        raise ValueError("Bad length for bluetooth address");
     assert len(addr) == 6
     return "%02X:%02X:%02X:%02X:%02X:%02X" % tuple(reversed(addr))
 
+
+def str2ba(s):
+    addr = [int(x, 16) for x in s.split(':')]
+    addr.reverse()
+    if len(addr) != 6:
+        raise ValueError("Bad length for bluetooth address");
+    return bytearray(addr)
+    
 
 def dump_hex(data):
     s = ''
     for i, b in enumerate(data):
         if (i % 16) == 0:
-            s += '\t'
+            s += '    %04x: ' % i
         s += '%02X' % b
         if (i % 16) == 15:
             s += '\n'
@@ -37,34 +50,69 @@ def dump_hex(data):
             s += '-'
         else:
             s += ' '
+    if s[-1] != '\n':
+        s += '\n'
     return s
 
-TYPEMAP = {
-    0x02: "HELLO",
-}
+def parse_hello(pkt):
+    return "HELLO"
+
+pkttype_map = {}
+
+
+def pkttype_name(t):
+    if t in pkttype_map:
+        return "%s (%02X)" % (pkttype_map[t], t)
+    else:
+        return "TYPE %02X" % t
+
+
+def def_pkttype(name, val):
+    globals()[name] = val
+    pkttype_map[val] = name
+
+
+def_pkttype("HELLO", 0x02)
+
 
 class BTSMAPacket(object):
-    HDRLEN = 17
-
-    def __init__(self, raw):
-        self.raw = raw
-        self.pktlen = _check_header(raw)
-        self.fromaddr = ba2str(raw[4:10])
-        self.toaddr = ba2str(raw[10:16])
-        self.type = raw[16]
+    def __init__(self, fromaddr=None, toaddr=None, payload=None, raw=None):
+        if raw is not None:
+            if ((payload is not None)
+                or (fromaddr is not None)
+                or (toaddr is not None)):
+                raise TypeError("Must supply either raw or payload arguments, not both")
+            self.raw = raw
+            self.pktlen = _check_header(raw)
+            self.fromaddr = ba2str(raw[4:10])
+            self.toaddr = ba2str(raw[10:16])
+            self.type = raw[16]
+        else:
+            if ((payload is None)
+                or (fromaddr is None)
+                or (toaddr is None)):
+                raise TypeError("Must supply either raw or payload arguments")
+            self.pktlen = len(payload) + HDRLEN - 1
+            self.fromaddr = fromaddr
+            self.toaddr = toaddr
+            self.type = payload[0]
+            self.raw = bytearray([0x7e, self.pktlen, 0x00, self.pktlen ^ 0x7e])
+            self.raw += str2ba(fromaddr)
+            self.raw += str2ba(toaddr)
+            self.raw += payload
+            assert _check_header(self.raw) == self.pktlen
 
     def __len__(self):
         return self.pktlen
 
-    def payload(self):
-        return self.raw[self.HDRLEN:]
-
     def __str__(self):
-        s = "[%d] %s -> %s : TYPE %02X" % (self.pktlen, self.fromaddr,
-                                           self.toaddr, self.type)
-        if self.type in TYPEMAP:
-            s += " (%s)" % TYPEMAP[self.type]
-        return  s + "\n" + dump_hex(self.payload())
+        return "[%d bytes] %s -> %s : %s" % (self.pktlen, self.fromaddr,
+                                             self.toaddr,
+                                             pkttype_name(self.type))
+
+    def dump(self, f, prefix):
+        f.write(prefix + str(self) + '\n')
+        f.write(dump_hex(self.raw))
 
 class BTSMAConnection(object):
     MAXBUFFER = 512
@@ -79,10 +127,10 @@ class BTSMAConnection(object):
         self.rxbuf = bytearray()
 
     def raw_peek_packet(self):
-        if len(self.rxbuf) < 4:
+        if len(self.rxbuf) < HDRLEN:
             return None
 
-        pktlen = _check_header(self.rxbuf[:4])
+        pktlen = _check_header(self.rxbuf[:HDRLEN])
 
         if len(self.rxbuf) < pktlen:
             return None
@@ -103,7 +151,18 @@ class BTSMAConnection(object):
         return pkt
 
     def read_packet(self):
-        return BTSMAPacket(self.raw_read_packet())
+        return BTSMAPacket(raw=self.raw_read_packet())
+
+    def raw_write_packet(self, raw):
+        pktlen = _check_header(raw)
+        if pktlen != len(raw):
+            raise BTSMAError("Refusing to send badly formatted packet")
+        self.sock.send(str(raw))
+
+    def write_packet(self, pkt):
+        if not isinstance(pkt, BTSMAPacket):
+            raise TypeError()
+        self.raw_write_packet(pkt.raw)
 
 
 if __name__ == '__main__':
