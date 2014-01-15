@@ -10,7 +10,7 @@ def rx_thread(conn):
     while True:
         pkt = conn.read_packet()
         print()
-        pkt.dump(sys.stdout, "RX ")
+        dump_packet(pkt, sys.stdout, "RX ")
 
 
 class Quit(Exception):
@@ -40,8 +40,8 @@ def raw(conn, *args):
 @cmd
 def send0(conn, *args):
     payload = bytearray([int(x, 16) for x in args])
-    pkt = BTSMAPacket("00:00:00:00:00:00", conn.remote_addr, payload)
-    pkt.dump(sys.stdout, "TX ")
+    pkt = make_packet("00:00:00:00:00:00", conn.remote_addr, payload)
+    dump_packet(pkt, sys.stdout, "TX ")
     conn.write_packet(pkt)
 
 
