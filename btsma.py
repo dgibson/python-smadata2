@@ -42,11 +42,11 @@ def str2ba(s):
     return bytearray(addr)
     
 
-def dump_hex(data):
+def dump_hex(data, prefix):
     s = ''
     for i, b in enumerate(data):
         if (i % 16) == 0:
-            s += '    %04x: ' % i
+            s += '%s%04x: ' % (prefix, i)
         s += '%02X' % b
         if (i % 16) == 15:
             s += '\n'
@@ -72,11 +72,11 @@ def pkttype_name(t):
         return "TYPE %02X" % t
 
 
-def pkttype_dump(f, type_, pkt):
+def pkttype_dump(f, type_, pkt, prefix):
     if type_ in pkttype_map:
         dump = pkttype_map[type_][1]
         if dump is not None:
-            dump(f, pkt)
+            dump(f, pkt, prefix)
 
 
 def def_pkttype(name, val, dump=None):
@@ -84,27 +84,32 @@ def def_pkttype(name, val, dump=None):
     pkttype_map[val] = (name, dump)
 
 
-def dump_pkt_peers(f, pkt):
+def dump_pkt_peers(f, pkt, prefix):
     payload = pkt[HDRLEN:]
 
     if (len(payload) % 7) != 0:
-        f.write("        !!! Unexpected PEERS format")
+        f.write("%s!!! Unexpected PEERS format" % prefix)
     else:
         for i in range(0, len(payload), 7):
             n = payload[i]
             addr = ba2str(payload[i+1:i+7])
-            f.write("        PEER %02X: %s\n" % (n, addr))
+            f.write("%sPEER %02X: %s\n" % (prefix, n, addr))
 
-def dump_pkt_signal(f, pkt):
+def dump_pkt_signal(f, pkt, prefix):
     payload = pkt[HDRLEN:]
     signal = (payload[5] / 0xff) * 100
-    f.write("        SIGNAL %.1f%%\n" % signal)
+    f.write("%sSIGNAL %.1f%%\n" % (prefix, signal))
 
 
+def dump_pkt_error(f, pkt, prefix):
+    f.write("%sERROR in packet:\n" % prefix)
+    dump_packet(pkt[21:], f, prefix + "    ")
+    
 def_pkttype("HELLO", 0x02)
 def_pkttype("PEERS?", 0x0a, dump_pkt_peers)
 def_pkttype("SIGNALREQ?", 0x03)
 def_pkttype("SIGNAL?", 0x04, dump_pkt_signal)
+def_pkttype("ERROR", 0x07, dump_pkt_error)
 
 def dump_packet(pkt, f, prefix):
     pktlen = _check_header(pkt)
@@ -114,9 +119,9 @@ def dump_packet(pkt, f, prefix):
 
     f.write("%s[%d bytes] %s -> %s : %s\n" % (prefix, pktlen, fromaddr,
                                               toaddr, pkttype_name(type_)))
-
-    f.write(dump_hex(pkt))
-    pkttype_dump(f, type_, pkt)
+    prefix = " " * len(prefix)
+    f.write(dump_hex(pkt, prefix))
+    pkttype_dump(f, type_, pkt, prefix + "    ")
     
 
 def make_packet(fromaddr, toaddr, payload):

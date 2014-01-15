@@ -11,7 +11,7 @@ def rx_thread(conn):
     while True:
         pkt = conn.read_packet()
         print()
-        dump_packet(pkt, sys.stdout, "RX ")
+        dump_packet(pkt, sys.stdout, "RX  ")
 
 
 class Quit(Exception):
@@ -28,7 +28,7 @@ def cmd(f):
 
 
 def dump_and_write(conn, pkt):
-    dump_packet(pkt, sys.stdout, "TX ")
+    dump_packet(pkt, sys.stdout, "TX  ")
     conn.write_packet(pkt)
 
 
