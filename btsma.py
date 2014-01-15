@@ -1,11 +1,13 @@
 #! /usr/bin/env python
 
 from __future__ import print_function
+from __future__ import division
 
 import sys
 import bluetooth
 
-__all__ = ['BTSMAConnection', 'BTSMAError', 'dump_packet', 'make_packet']
+__all__ = ['BTSMAConnection', 'BTSMAError', 'dump_packet',
+           'make_packet', 'make_hello_packet']
 
 HDRLEN = 17
 
@@ -63,18 +65,45 @@ pkttype_map = {}
 
 def pkttype_name(t):
     if t in pkttype_map:
-        return "%s (%02X)" % (pkttype_map[t], t)
+        name = pkttype_map[t][0]
+        return "%s (%02X)" % (name, t)
     else:
         return "TYPE %02X" % t
 
 
-def def_pkttype(name, val):
+def pkttype_dump(f, type_, pkt):
+    if type_ in pkttype_map:
+        dump = pkttype_map[type_][1]
+        if dump is not None:
+            dump(f, pkt)
+
+
+def def_pkttype(name, val, dump=None):
     globals()[name] = val
-    pkttype_map[val] = name
+    pkttype_map[val] = (name, dump)
+
+
+def dump_pkt_peers(f, pkt):
+    payload = pkt[HDRLEN:]
+
+    if (len(payload) % 7) != 0:
+        f.write("        !!! Unexpected PEERS format")
+    else:
+        for i in range(0, len(payload), 7):
+            n = payload[i]
+            addr = ba2str(payload[i+1:i+7])
+            f.write("        PEER %02X: %s\n" % (n, addr))
+
+def dump_pkt_signal(f, pkt):
+    payload = pkt[HDRLEN:]
+    signal = (payload[5] / 0xff) * 100
+    f.write("        SIGNAL %.1f%%\n" % signal)
 
 
 def_pkttype("HELLO", 0x02)
-
+def_pkttype("PEERS?", 0x0a, dump_pkt_peers)
+def_pkttype("SIGNALREQ?", 0x03)
+def_pkttype("SIGNAL?", 0x04, dump_pkt_signal)
 
 def dump_packet(pkt, f, prefix):
     pktlen = _check_header(pkt)
@@ -86,6 +115,8 @@ def dump_packet(pkt, f, prefix):
                                               toaddr, pkttype_name(type_)))
 
     f.write(dump_hex(pkt))
+    pkttype_dump(f, type_, pkt)
+    
 
 def make_packet(fromaddr, toaddr, payload):
     pktlen = len(payload) + HDRLEN - 1
@@ -95,6 +126,12 @@ def make_packet(fromaddr, toaddr, payload):
     pkt += payload
     assert _check_header(pkt) == pktlen
     return pkt
+
+
+def make_hello_packet(conn):
+    hello = bytearray('\x02\x00\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00')
+    return make_packet("00:00:00:00:00:00", conn.remote_addr,
+                       hello)
 
 
 class BTSMAConnection(object):

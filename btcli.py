@@ -26,6 +26,11 @@ def cmd(f):
     return f
 
 
+def dump_and_write(conn, pkt):
+    dump_packet(pkt, sys.stdout, "TX ")
+    conn.write_packet(pkt)
+
+
 @cmd
 def quit(conn):
     raise Quit()
@@ -41,14 +46,21 @@ def raw(conn, *args):
 def send0(conn, *args):
     payload = bytearray([int(x, 16) for x in args])
     pkt = make_packet("00:00:00:00:00:00", conn.remote_addr, payload)
-    dump_packet(pkt, sys.stdout, "TX ")
-    conn.write_packet(pkt)
+    dump_and_write(conn, pkt)
+
+@cmd
+def hello(conn, *args):
+    pkt = make_hello_packet(conn)
+    dump_and_write(conn, pkt)
 
 
 def cli_thread(conn):
     while True:
         sys.stdout.write("BTSMA %s >> " % conn.remote_addr)
-        line = raw_input().split()
+        try:
+            line = raw_input().split()
+        except EOFError:
+            return
         if not line:
             continue
 
