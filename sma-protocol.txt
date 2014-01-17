@@ -1,0 +1,100 @@
+Notes on the protocol for Bluetooth enabled SMA inverters
+=========================================================
+
+Outer protocol
+==============
+
+Packet based protocol over RFCOMM channel 1 over Bluetooth.  The same
+packet format appears to be used in both directions.
+
+Speculation:
+ - Used for communication between the bluetooth adapters, rather than
+   the equipment itself?
+
+Packet header
+-------------
+
+Offset		Value
+---------------------
+0		0x7e
+1		length of packet (including header)
+2		0x00
+3		length of packet XORed with 0x7e
+4..9		"From" bluetooth address
+10..15		"To" bluetooth address
+16		Packet type
+
+17..		Payload (format depends on packet type)
+
+
+The bluetooth addresses are encoded in the reverse order to how
+they're usually written.  So 00:01:02:03:04:05 would be sent over the
+"wire" as:
+	0x05 0x04 0x03 0x02 0x01 0x00
+
+For packets which don't relate to the inner protocol,
+00:00:00:00:00:00 seems to be used instead of the initiating host's
+MAC address.
+
+
+Packet type 0x01: Inner protocol data
+-------------------------------------
+
+Packet type 0x02: "Hello"
+-------------------------
+
+Upon connection, SMA device issues one of these ~once per second,
+until host replies with an identical (?) hello packet.
+
+Offset		Value
+---------------------
+16		0x02
+17		0x00
+18		0x00
+19		0x04
+20		0x70
+21		0x00
+22		0x01
+23		0x00
+24		0x00
+25		0x00
+26		0x00
+27		0x01		NetID???
+28		0x00
+29		0x00
+30		0x00 
+
+Packet type 0x03: Signal request
+--------------------------------
+
+Causes SMA device to issue a type 04, signal level packet:
+
+Offset		Value
+---------------------
+16		0x03
+17		0x00
+18		0x05
+19		0x00
+
+
+Packet type 0x04: Signal level
+------------------------------
+
+Packet type 0x05: Unknown
+-------------------------
+
+Packet type 0x07: Error
+-----------------------
+
+Packet type 0x08: Inner protocol continued
+------------------------------------------
+
+Packet type 0x0a: List of peers??
+---------------------------------
+
+Packet type 0x0c: Unknown
+-------------------------
+
+
+Inner protocol
+==============
