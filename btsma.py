@@ -235,8 +235,9 @@ class BTSMAConnection(object):
         self.local_addr = self.sock.getsockname()[0]
 
         self.rxbuf = bytearray()
+        self.pppbuf = bytearray()
 
-    def raw_peek_packet(self):
+    def peek_packet(self):
         if len(self.rxbuf) < HDRLEN:
             return None
 
@@ -254,10 +255,10 @@ class BTSMAConnection(object):
         self.rxbuf += self.sock.recv(space)
 
     def read_packet(self):
-        pkt = self.raw_peek_packet()
+        pkt = self.peek_packet()
         while pkt is None:
             self.__rxmore()
-            pkt = self.raw_peek_packet()
+            pkt = self.peek_packet()
         return pkt
 
     def write_packet(self, pkt):
