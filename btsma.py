@@ -7,18 +7,24 @@ import sys
 import bluetooth
 import readline
 
-__all__ = ['BTSMAConnection', 'BTSMAError', 'dump_packet',
-           'make_crc_packet', 
-           'make_packet', 'make_hello_packet', 'make_signalreq_packet']
+__all__ = ['BTSMAConnection', 'BTSMAError',
+           'OTYPE_HELLO', 'OTYPE_SIGNALREQ', 'OTYPE_SIGNAL',
+           'OTYPE_ERROR']
 
-HDRLEN = 17
+OUTER_HLEN = 17
+
+OTYPE_PPP = 0x01
+OTYPE_HELLO = 0x02
+OTYPE_SIGNALREQ = 0x03
+OTYPE_SIGNAL = 0x04
+OTYPE_ERROR = 0x07
 
 class BTSMAError(Exception):
     pass
 
 
 def _check_header(hdr):
-    if len(hdr) < HDRLEN:
+    if len(hdr) < OUTER_HLEN:
         raise ValueError()
 
     if (hdr[0] != 0x7e) or (hdr[2] != 0x00):
@@ -42,48 +48,6 @@ def str2ba(s):
         raise ValueError("Bad length for bluetooth address");
     return bytearray(addr)
     
-
-def dump_hex(data, prefix):
-    s = ''
-    for i, b in enumerate(data):
-        if (i % 16) == 0:
-            s += '%s%04x: ' % (prefix, i)
-        s += '%02X' % b
-        if (i % 16) == 15:
-            s += '\n'
-        elif (i % 16) == 7:
-            s += '-'
-        else:
-            s += ' '
-    if s[-1] != '\n':
-        s += '\n'
-    return s
-
-def parse_hello(pkt):
-    return "HELLO"
-
-pkttype_map = {}
-
-
-def pkttype_name(t):
-    if t in pkttype_map:
-        name = pkttype_map[t][0]
-        return "%s (%02X)" % (name, t)
-    else:
-        return "TYPE %02X" % t
-
-
-def pkttype_dump(f, type_, pkt, prefix):
-    if type_ in pkttype_map:
-        dump = pkttype_map[type_][1]
-        if dump is not None:
-            dump(f, pkt, prefix)
-
-
-def def_pkttype(name, val, dump=None):
-    globals()[name] = val
-    pkttype_map[val] = (name, dump)
-
 
 crc16_table = [0x0000, 0x1189, 0x2312, 0x329b, 0x4624, 0x57ad, 0x6536, 0x74bf,
                0x8c48, 0x9dc1, 0xaf5a, 0xbed3, 0xca6c, 0xdbe5, 0xe97e, 0xf8f7,
@@ -127,103 +91,6 @@ def crc16(iv, data):
     return crc ^ 0xffff
 
 
-def unescape(data):
-    out = bytearray()
-    while data:
-        b = data.pop(0)
-        if b == 0x7d:
-            out.append(data.pop(0) ^ 0x20)
-        else:
-            out.append(b)
-    return out
-
-
-def dump_pkt_crc(f, pkt, prefix):
-    if ((pkt[17] != 0x00)
-        or (pkt[18] != 0x7e)
-        or (pkt[-1] != 0x7e)):
-        f.write("%sCRC unexpected framing\n" % prefix)
-    spl = unescape(pkt[19:-3])
-    pcrc = (pkt[-2] << 8) + pkt[-3]
-    ccrc = crc16(0xffff, spl)
-    if ccrc == pcrc:
-        f.write("%sValid CRC 0x%04x\n" % (prefix, ccrc))
-    else:
-        f.write("%sBad CRC 0x%04x (expected 0x%04x)\n" % (prefix, pcrc, ccrc))
-    f.write(dump_hex(spl, prefix + "    "))
-
-
-def dump_pkt_peers(f, pkt, prefix):
-    payload = pkt[HDRLEN:]
-
-    if (len(payload) % 7) != 0:
-        f.write("%s!!! Unexpected PEERS format" % prefix)
-    else:
-        for i in range(0, len(payload), 7):
-            n = payload[i]
-            addr = ba2str(payload[i+1:i+7])
-            f.write("%sPEER %02X: %s\n" % (prefix, n, addr))
-
-def dump_pkt_signal(f, pkt, prefix):
-    payload = pkt[HDRLEN:]
-    signal = (payload[5] / 0xff) * 100
-    f.write("%sSIGNAL %.1f%%\n" % (prefix, signal))
-
-
-def dump_pkt_error(f, pkt, prefix):
-    f.write("%sERROR in packet:\n" % prefix)
-    dump_packet(pkt[21:], f, prefix + "    ")
-
-def_pkttype("CRC", 0x01, dump_pkt_crc)
-def_pkttype("HELLO", 0x02)
-def_pkttype("PEERS?", 0x0a, dump_pkt_peers)
-def_pkttype("SIGNALREQ?", 0x03)
-def_pkttype("SIGNAL?", 0x04, dump_pkt_signal)
-def_pkttype("ERROR", 0x07, dump_pkt_error)
-
-def dump_packet(pkt, f, prefix):
-    pktlen = _check_header(pkt)
-    fromaddr = ba2str(pkt[4:10])
-    toaddr = ba2str(pkt[10:16])
-    type_ = pkt[16]
-
-    f.write("%s[%d bytes] %s -> %s : %s\n" % (prefix, pktlen, fromaddr,
-                                              toaddr, pkttype_name(type_)))
-    prefix = " " * len(prefix)
-    f.write(dump_hex(pkt, prefix))
-    pkttype_dump(f, type_, pkt, prefix + "    ")
-    
-
-def make_packet(fromaddr, toaddr, payload):
-    pktlen = len(payload) + HDRLEN - 1
-    pkt = bytearray([0x7e, pktlen, 0x00, pktlen ^ 0x7e])
-    pkt += str2ba(fromaddr)
-    pkt += str2ba(toaddr)
-    pkt += payload
-    assert _check_header(pkt) == pktlen
-    return pkt
-
-
-def make_crc_packet(conn, subpayload):
-    crc = crc16(0xffff, subpayload)
-    payload = bytearray('\x01\x00\x7e')
-    payload += subpayload
-    payload.append(crc & 0xff)
-    payload.append(crc >> 8)
-    payload.append(0x7e)
-    return make_packet(conn.local_addr, "ff:ff:ff:ff:ff:ff", payload)
-
-    
-def make_hello_packet(conn):
-    hello = bytearray('\x02\x00\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00')
-    return make_packet("00:00:00:00:00:00", conn.remote_addr, hello)
-
-
-def make_signalreq_packet(conn):
-    signalreq = bytearray('\x03\x00\x05\x00')
-    return make_packet("00:00:00:00:00:00", conn.remote_addr, signalreq)
-
-
 class BTSMAConnection(object):
     MAXBUFFER = 512
 
@@ -237,40 +104,128 @@ class BTSMAConnection(object):
         self.rxbuf = bytearray()
         self.pppbuf = bytearray()
 
-    def peek_packet(self):
-        if len(self.rxbuf) < HDRLEN:
-            return None
+    #
+    # RX side
+    #
 
-        pktlen = _check_header(self.rxbuf[:HDRLEN])
-
-        if len(self.rxbuf) < pktlen:
-            return None
-
-        pkt = self.rxbuf[:pktlen]
-        del self.rxbuf[:pktlen]
-        return pkt
-
-    def __rxmore(self):
+    def rx(self):
         space = self.MAXBUFFER - len(self.rxbuf)
         self.rxbuf += self.sock.recv(space)
 
-    def read_packet(self):
-        pkt = self.peek_packet()
-        while pkt is None:
-            self.__rxmore()
-            pkt = self.peek_packet()
-        return pkt
+        if len(self.rxbuf) < OUTER_HLEN:
+            return
 
-    def write_packet(self, pkt):
+        pktlen = _check_header(self.rxbuf[:OUTER_HLEN])
+
+        if len(self.rxbuf) < pktlen:
+            return
+
+        pkt = self.rxbuf[:pktlen]
+        del self.rxbuf[:pktlen]
+
+        self.rx_raw(pkt)
+
+    def rx_raw(self, pkt):
+        from_ = ba2str(pkt[4:10])
+        to_ = ba2str(pkt[10:16])
+        type_ = pkt[16]
+        payload = pkt[OUTER_HLEN:]
+
+        self.rx_outer(from_, to_, type_, payload)
+
+    def rx_outer(self, from_, to_, type_, payload):
+        if type_ == OTYPE_PPP:
+            self.rx_ppp_raw(from_, payload[1:])
+
+    def rx_ppp_raw(self, from_, payload):
+        self.pppbuf += payload
+        term = self.pppbuf.find('\x7e', 1)
+        if term < 0:
+            return
+
+        raw = self.pppbuf[:term+1]
+        del self.pppbuf[:term+1]
+        assert raw[-1] == 0x7e
+        if raw[0] != 0x7e:
+            raise BTSMAError("Missing flag byte on PPP packet")
+
+        raw = raw[1:-1]
+        frame = bytearray()
+        while raw:
+            b = raw.pop(0)
+            if b == 0x7d:
+                frame.append(raw.pop(0) ^ 0x20)
+            else:
+                frame.append(b)
+
+        if (frame[0] != 0xff) or (frame[1] != 0x03):
+            raise BTSMAError("Bad header on PPP frame")
+
+        pcrc = (frame[-1] << 8) + frame[-2]
+        ccrc = crc16(0xffff, frame[:-2])
+        if pcrc != ccrc:
+            raise BTSMAError("Bad CRC on PPP frame")
+
+        protocol = frame[2] + (frame[3] << 8)
+        
+        self.rx_ppp(from_, protocol, frame[4:-2])
+
+    def rx_ppp(self, from_, protocol, payload):
+        pass
+
+    #
+    # Tx side
+    #
+    def tx_raw(self, pkt):
         if _check_header(pkt) != len(pkt):
             raise ValueError("Bad packet")
         self.sock.send(str(pkt))
 
+    def tx_outer(self, from_, to_, type_, payload):
+        pktlen = len(payload) + OUTER_HLEN
+        pkt = bytearray([0x7e, pktlen, 0x00, pktlen ^ 0x7e])
+        pkt += str2ba(from_)
+        pkt += str2ba(to_)
+        pkt.append(type_)
+        pkt += payload
+        assert _check_header(pkt) == pktlen
 
-if __name__ == '__main__':
-    conn = BTSMAConnection(sys.argv[1])
-    print("Connected %s -> %s" % (conn.local_addr, conn.remote_addr))
-    while True:
-        pkt = conn.read_packet()
-        print("IN ", pkt)
+        self.tx_raw(pkt)
 
+    def tx_hello(self):
+        payload = bytearray('\x00\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00')
+        self.tx_outer("00:00:00:00:00:00", self.remote_addr,
+                      OTYPE_HELLO, payload)
+
+    def tx_signalreq(self):
+        payload = bytearray('\x00\x05\x00')
+        self.tx_outer("00:00:00:00:00:00", self.remote_addr,
+                      OTYPE_SIGNALREQ, payload)
+
+    def tx_ppp_raw(self, to_, payload):
+        self.tx_outer(self.local_addr, to_, OTYPE_PPP,
+                      bytearray('\x00') + payload)
+
+    def tx_ppp(self, to_, protocol, payload):
+        frame = bytearray('\xff\x03')
+        frame.append(protocol & 0xff)
+        frame.append(protocol >> 8)
+        frame += payload
+
+        crc = crc16(0xffff, frame)
+
+        frame.append(crc & 0xff)
+        frame.append(crc >> 8)
+
+        rawpayload = bytearray()
+        rawpayload.append(0x7e)
+        for b in frame:
+            # Escape \x7e (FLAG), 0x7d (ESCAPE), 0x11 (XON) and 0x13 (XOFF)
+            if b in [0x7e, 0x7d, 0x11, 0x13]:
+                rawpayload.append(0x7d)
+                rawpayload.append(b ^ 0x20)
+            else:
+                rawpayload.append(b)
+        rawpayload.append(0x7e)
+
+        self.tx_ppp_raw(to_, rawpayload)
