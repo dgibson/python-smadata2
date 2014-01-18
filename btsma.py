@@ -8,16 +8,19 @@ import bluetooth
 import readline
 
 __all__ = ['BTSMAConnection', 'BTSMAError',
-           'OTYPE_HELLO', 'OTYPE_SIGNALREQ', 'OTYPE_SIGNAL',
-           'OTYPE_ERROR']
+           'OTYPE_PPP', 'OTYPE_HELLO', 'OTYPE_GETVAR', 'OTYPE_VARVAL',
+           'OTYPE_ERROR',
+           'OVAR_SIGNAL']
 
 OUTER_HLEN = 17
 
 OTYPE_PPP = 0x01
 OTYPE_HELLO = 0x02
-OTYPE_SIGNALREQ = 0x03
-OTYPE_SIGNAL = 0x04
+OTYPE_GETVAR = 0x03
+OTYPE_VARVAL = 0x04
 OTYPE_ERROR = 0x07
+
+OVAR_SIGNAL = 0x05
 
 class BTSMAError(Exception):
     pass
@@ -136,6 +139,10 @@ class BTSMAConnection(object):
     def rx_outer(self, from_, to_, type_, payload):
         if type_ == OTYPE_PPP:
             self.rx_ppp_raw(from_, payload[1:])
+        elif type_ == OTYPE_VARVAL:
+            varid = payload[1]
+            varval = payload[3:]
+            self.rx_varval(from_, varid, varval)
 
     def rx_ppp_raw(self, from_, payload):
         self.pppbuf += payload
@@ -171,6 +178,10 @@ class BTSMAConnection(object):
         self.rx_ppp(from_, protocol, frame[4:-2])
 
     def rx_ppp(self, from_, protocol, payload):
+        pass
+
+
+    def rx_varval(self, from_, varid, varval):
         pass
 
     #
@@ -229,3 +240,7 @@ class BTSMAConnection(object):
         rawpayload.append(0x7e)
 
         self.tx_ppp_raw(to_, rawpayload)
+
+    def tx_getvar(self, to_, varid):
+        self.tx_outer("00:00:00:00:00:00", to_, OTYPE_GETVAR,
+                      bytearray([0x00, varid, 0x00]))

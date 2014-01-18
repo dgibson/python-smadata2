@@ -36,11 +36,6 @@ def dump_outer(prefix, from_, to_, type_, payload):
     prefix = prefix + "    "
     if type_ == OTYPE_HELLO:
         print("%sHELLO!" % prefix)
-    elif type_ == OTYPE_SIGNALREQ:
-        print("%sSIGNALREQ" % prefix)
-    elif type_ == OTYPE_SIGNAL:
-        signal = (payload[5] / 0xff) * 100
-        print("%sSIGNAL %.1f%%" % (prefix, signal))
     elif type_ == OTYPE_ERROR:
         print("%sERROR in previous packet:" % prefix)
         print(hexdump(payload[4:], prefix + "    "))
@@ -88,7 +83,14 @@ class BTSMAConnectionCLI(BTSMAConnection):
     def rx_ppp(self, from_, protocol, payload):
         dump_ppp("Rx<         ", protocol, payload)
         super(BTSMAConnectionCLI, self).rx_ppp(from_, protocol, payload)
-        
+
+    def rx_varval(self, from_, varid, varval):
+        print("Rx<         VARVAL 0x%02x" % varid)
+        if varid == OVAR_SIGNAL:
+            print("Rx<             Signal level %0.1f%%"
+                  % (varval[2] / 255 * 100))
+        super(BTSMAConnectionCLI, self).rx_varval(from_, varid, varval)
+
     def tx_raw(self, pkt):
         super(BTSMAConnectionCLI, self).tx_raw(pkt)
         print("\n" + hexdump(pkt, "Tx> "))
@@ -105,7 +107,11 @@ class BTSMAConnectionCLI(BTSMAConnection):
     def tx_ppp(self, to_, protocol, payload):
         super(BTSMAConnectionCLI, self).tx_ppp(to_, protocol, payload)
         dump_ppp("Tx>         ", protocol, payload)
-    
+
+    def tx_getvar(self, to_, varid):
+        super(BTSMAConnectionCLI, self).tx_getvar(to_, varid)
+        print("Tx>         GETVAR 0x%02x" % varid)
+
     def cli(self):
         while True:
             sys.stdout.write("BTSMA %s >> " % self.remote_addr)
@@ -154,8 +160,12 @@ class BTSMAConnectionCLI(BTSMAConnection):
     def cmd_hello(self):
         self.tx_hello()
 
-    def cmd_signalreq(self):
-        self.tx_signalreq()
+    def cmd_getvar(self, varid):
+        if varid == 'signal':
+            varid = OVAR_SIGNAL
+        else:
+            varid = int(varid, 16)
+        self.tx_getvar(self.remote_addr, varid)
 
     def cmd_ppp(self, protocol, *args):
         protocol = int(protocol, 0)
