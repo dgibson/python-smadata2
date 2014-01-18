@@ -1,15 +1,32 @@
 Notes on the protocol for Bluetooth enabled SMA inverters
 =========================================================
 
+There seem to be two "interesting" protocol layers in the SMA
+bluetooth protocol.  The "outer" protocol is a packet protocol over
+Bluetooth RFCOMM.  It seems mainly to deal with Bluetooth specific
+things - signal levels etc.
+
+Speculation:
+ - Used for communication between the bluetooth adapters, rather than
+   the equipment itself?
+ - e.g. SMA bluetooth repeaters would talk this protocol, then forward
+   the inner frames on to the actual equipment?
+
+Some of the outer protocol frame types encapsulate PPP frames.  All
+PPP frames observed are PPP protocol number 0x6560, which appears to
+be an SMA allocated ID for their control protocol.
+
+Speculation:
+ - Is PPP and the inner protocol used directly over serial when using
+   RS485 instead of Bluetooth connections?
+    - Allows for shared use of RS485 lines, maybe?
+
 Outer protocol
 ==============
 
 Packet based protocol over RFCOMM channel 1 over Bluetooth.  The same
 packet format appears to be used in both directions.
 
-Speculation:
- - Used for communication between the bluetooth adapters, rather than
-   the equipment itself?
 
 Packet header
 -------------
@@ -40,6 +57,18 @@ MAC address.
 Packet type 0x01: Inner protocol data
 -------------------------------------
 
+Packet type 0x01: PPP frame
+---------------------------
+
+Offset		Value
+16		0x01
+17		0x00
+18..		PPP data
+
+The PPP data is raw as it would be transmitted over serial. i.e. it
+includes flag bytes (0x7e at start and end of each PPP packet), PPP
+escaping, and the PPP CRC16 checksum at end of each frame.
+
 Packet type 0x02: "Hello"
 -------------------------
 
@@ -64,21 +93,48 @@ Offset		Value
 29		0x00
 30		0x00 
 
-Packet type 0x03: Signal request
---------------------------------
+Packet type 0x03: GETVAR
+------------------------
 
-Causes SMA device to issue a type 04, signal level packet:
+Causes device to issue a type 04 packet giving a variable value (?)
 
 Offset		Value
 ---------------------
 16		0x03
 17		0x00
-18		0x05
+18		variable ID
 19		0x00
 
+Packet type 0x04: VARIABLE
+--------------------------
 
-Packet type 0x04: Signal level
-------------------------------
+Offset		Value
+---------------------
+16		0x04
+17		0x00
+18		variable ID
+19		0x00
+20..		variable contents
+
+Variables:
+	Variable 0x00, 0x10, 0x11: Invalid
+		 Causes a type 07 error packet to be issued
+
+	Variable 0x05: Signal Level
+Offset		 Value
+----------------------
+18		0x05
+19		0x00
+20		0x00
+21		0x00
+22		signal level, out of 255
+23		0x00
+
+ID		Meaning		Length
+--------------------------------------
+0x05		signal level	4 bytes
+
+
 
 Packet type 0x05: Unknown
 -------------------------
@@ -89,12 +145,12 @@ Packet type 0x07: Error
 Packet type 0x08: Inner protocol continued
 ------------------------------------------
 
-Packet type 0x0a: List of peers??
----------------------------------
+Packet type 0x0a: Unkown
+------------------------
 
 Packet type 0x0c: Unknown
 -------------------------
 
 
-Inner protocol
+Inner protocol (PPP protocol 0x6560)
 ==============
