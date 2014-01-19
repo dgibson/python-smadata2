@@ -61,7 +61,13 @@ class BTSMAConnectionCLI(BTSMAConnection):
         super(BTSMAConnectionCLI, self).__init__(addr)
         print("Connected %s -> %s"
               % (self.local_addr, self.remote_addr))
+        self.rxpid = None
 
+    def __del__(self):
+        if self.rxpid:
+            os.kill(self.rxpid, signal.SIGTERM)
+
+    def start_rxthread(self):
         self.rxpid = os.fork()
         if self.rxpid == 0:
             while True:
@@ -193,13 +199,12 @@ class BTSMAConnectionCLI(BTSMAConnection):
         spl = bytearray('\x09\xE0\x4e\x00\xe1\x7e\xf6\x7e\x00\x00\x78\x00\x3f\x10\xfb\x39\x00\x00\x00\x00\x00\x00\x01\x80\x00\x02\x00\x70\x00\x27\x0e\x50\x80\x5a\xc3\x52')
         self.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, spl)
 
-if len(sys.argv) != 2:
-    print("Usage: btcli.py <BD addr>", file=sys.stderr)
-    sys.exit(1)
+if __name__ == '__main__':
+    if len(sys.argv) != 2:
+        print("Usage: btcli.py <BD addr>", file=sys.stderr)
+        sys.exit(1)
 
-cli = BTSMAConnectionCLI(sys.argv[1])
+    cli = BTSMAConnectionCLI(sys.argv[1])
 
-try:
+    cli.start_rxthread()
     cli.cli()
-finally:
-    os.kill(cli.rxpid, signal.SIGTERM)
