@@ -26,6 +26,18 @@ class BTSMAError(Exception):
     pass
 
 
+def waiter(fn):
+    def waitfn(self, *args):
+        fn(self, *args)
+        if hasattr(self, '__waitcond_' + fn.__name__):
+            wc = getattr(self, '__waitcond_' + fn.__name__)
+            if wc is None:
+                self.waitvar = args
+            else:
+                self.waitvar = wc(*args)
+    return waitfn
+
+
 def _check_header(hdr):
     if len(hdr) < OUTER_HLEN:
         raise ValueError()
@@ -128,6 +140,7 @@ class BTSMAConnection(object):
 
         self.rx_raw(pkt)
 
+    @waiter
     def rx_raw(self, pkt):
         from_ = ba2str(pkt[4:10])
         to_ = ba2str(pkt[10:16])
@@ -136,7 +149,10 @@ class BTSMAConnection(object):
 
         self.rx_outer(from_, to_, type_, payload)
 
+    @waiter
     def rx_outer(self, from_, to_, type_, payload):
+        if type_ == OTYPE_HELLO:
+            self.rx_hello(from_, payload)
         if type_ == OTYPE_PPP:
             self.rx_ppp_raw(from_, payload[1:])
         elif type_ == OTYPE_VARVAL:
@@ -144,6 +160,7 @@ class BTSMAConnection(object):
             varval = payload[3:]
             self.rx_varval(from_, varid, varval)
 
+    @waiter
     def rx_ppp_raw(self, from_, payload):
         self.pppbuf += payload
         term = self.pppbuf.find('\x7e', 1)
@@ -177,10 +194,15 @@ class BTSMAConnection(object):
         
         self.rx_ppp(from_, protocol, frame[4:-2])
 
+    @waiter
     def rx_ppp(self, from_, protocol, payload):
         pass
 
+    @waiter
+    def rx_hello(self, from_, payload):
+        pass
 
+    @waiter
     def rx_varval(self, from_, varid, varval):
         pass
 
@@ -244,3 +266,20 @@ class BTSMAConnection(object):
     def tx_getvar(self, to_, varid):
         self.tx_outer("00:00:00:00:00:00", to_, OTYPE_GETVAR,
                       bytearray([0x00, varid, 0x00]))
+
+    def wait(self, class_, cond=None):
+        self.waitvar = None
+        fn = getattr(self, 'rx_' + class_)
+        setattr(self, '__waitcond_rx_' + class_, cond)
+        while self.waitvar is None:
+            self.rx()
+        delattr(self, '__waitcond_rx_' + class_)
+        return self.waitvar
+
+    def wait_outer(self, wtype, wpl=bytearray()):
+        def wfn(from_, to_, type_, payload):
+            if ((type_ == wtype)
+                and payload.startswith(wpl)):
+                return wpl
+        return self.wait('outer', wfn)
+
