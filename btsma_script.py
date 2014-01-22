@@ -63,7 +63,7 @@ timebytes = [reporttime & 0xff,
              (reporttime >> 16) & 0xff,
              (reporttime >> 24) & 0xff]
 
-password = [0x88] * 12
+password = [(0x88 + ord('0')) & 0xff] * 4 + [0x88] * 8
 
 count += 1
 sma.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, bytearray(

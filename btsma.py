@@ -19,6 +19,7 @@ OTYPE_HELLO = 0x02
 OTYPE_GETVAR = 0x03
 OTYPE_VARVAL = 0x04
 OTYPE_ERROR = 0x07
+OTYPE_PPP2 = 0x08
 
 OVAR_SIGNAL = 0x05
 
@@ -151,7 +152,7 @@ class BTSMAConnection(object):
 
     @waiter
     def rx_outer(self, from_, to_, type_, payload):
-        if type_ == OTYPE_PPP:
+        if (type_ == OTYPE_PPP) or (type_ == OTYPE_PPP2):
             self.rx_ppp_raw(from_, payload[1:])
 
     @waiter
