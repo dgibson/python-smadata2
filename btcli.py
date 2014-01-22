@@ -67,11 +67,14 @@ class BTSMAConnectionCLI(BTSMAConnection):
         if self.rxpid:
             os.kill(self.rxpid, signal.SIGTERM)
 
+    def rxloop(self):
+        while True:
+            self.rx()
+
     def start_rxthread(self):
         self.rxpid = os.fork()
         if self.rxpid == 0:
-            while True:
-                self.rx()
+            self.rxloop()
 
     def rx_raw(self, pkt):
         print("\n" + hexdump(pkt, "Rx< "))
