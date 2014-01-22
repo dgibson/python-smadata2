@@ -151,14 +151,8 @@ class BTSMAConnection(object):
 
     @waiter
     def rx_outer(self, from_, to_, type_, payload):
-        if type_ == OTYPE_HELLO:
-            self.rx_hello(from_, payload)
         if type_ == OTYPE_PPP:
             self.rx_ppp_raw(from_, payload[1:])
-        elif type_ == OTYPE_VARVAL:
-            varid = payload[1]
-            varval = payload[3:]
-            self.rx_varval(from_, varid, varval)
 
     @waiter
     def rx_ppp_raw(self, from_, payload):
@@ -198,14 +192,6 @@ class BTSMAConnection(object):
     def rx_ppp(self, from_, protocol, payload):
         pass
 
-    @waiter
-    def rx_hello(self, from_, payload):
-        pass
-
-    @waiter
-    def rx_varval(self, from_, varid, varval):
-        pass
-
     #
     # Tx side
     #
@@ -224,20 +210,6 @@ class BTSMAConnection(object):
         assert _check_header(pkt) == pktlen
 
         self.tx_raw(pkt)
-
-    def tx_hello(self):
-        payload = bytearray('\x00\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00')
-        self.tx_outer("00:00:00:00:00:00", self.remote_addr,
-                      OTYPE_HELLO, payload)
-
-    def tx_signalreq(self):
-        payload = bytearray('\x00\x05\x00')
-        self.tx_outer("00:00:00:00:00:00", self.remote_addr,
-                      OTYPE_SIGNALREQ, payload)
-
-    def tx_ppp_raw(self, to_, payload):
-        self.tx_outer(self.local_addr, to_, OTYPE_PPP,
-                      bytearray('\x00') + payload)
 
     def tx_ppp(self, to_, protocol, payload):
         frame = bytearray('\xff\x03')
@@ -261,11 +233,8 @@ class BTSMAConnection(object):
                 rawpayload.append(b)
         rawpayload.append(0x7e)
 
-        self.tx_ppp_raw(to_, rawpayload)
-
-    def tx_getvar(self, to_, varid):
-        self.tx_outer("00:00:00:00:00:00", to_, OTYPE_GETVAR,
-                      bytearray([0x00, varid, 0x00]))
+        self.tx_outer(self.local_addr, to_, OTYPE_PPP,
+                      bytearray('\x00') + rawpayload)
 
     def wait(self, class_, cond=None):
         self.waitvar = None
@@ -280,6 +249,24 @@ class BTSMAConnection(object):
         def wfn(from_, to_, type_, payload):
             if ((type_ == wtype)
                 and payload.startswith(wpl)):
-                return wpl
+                return payload
         return self.wait('outer', wfn)
 
+    def hello(self):
+        hellopkt = self.wait_outer(OTYPE_HELLO)
+        if hellopkt != bytearray('\x00\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00'):
+            raise BTSMAError("Unexpected HELLO %r" % hellopkt)
+        self.tx_outer("00:00:00:00:00:00", self.remote_addr,
+                      OTYPE_HELLO, hellopkt)
+        self.wait_outer(0x05)
+
+    def getvar(self, varid):
+        self.tx_outer("00:00:00:00:00:00", self.remote_addr, OTYPE_GETVAR,
+                      bytearray([0x00, varid, 0x00]))
+        val = self.wait_outer(OTYPE_VARVAL, bytearray([0x00, varid, 0x00]))
+        return val[3:]
+
+
+    def getsignal(self):
+        val = self.getvar(OVAR_SIGNAL)
+        return val[3] / 0xff

@@ -14,32 +14,25 @@ if len(sys.argv) != 2:
 
 sma = BTSMAConnectionCLI(sys.argv[1])
 
+print("Exchanging HELLOs")
 #    17	:init $END;   //Can only be run once
 #    18	R 7E 1F 00 61 $ADDR 00 00 00 00 00 00 02 00 00 04 70 00 $END;
-
-print("Waiting for hello")
-hello = sma.wait_outer(OTYPE_HELLO)
-
 #    19	E $INVCODE $END;
 #    20	S 7E 1F 00 61 00 00 00 00 00 00 $ADDR 02 00 00 04 70 00 $INVCODE 00 00 00 00 01 00 00 00 $END;
-
-sma.tx_hello()
-
 #    21	R 7E 22 00 5C $ADDR 00 00 00 00 00 00 05 00 $ADDR $END;
 
-sma.wait_outer(0x05)
+sma.hello()
 
+print("Checking signal")
 #    22	E $ADD2 $END;
 #    23	:setup $END;  //Can be rerun
 #    24	S 7E 14 00 6A 00 00 00 00 00 00 $ADDR 03 00 05 00 $END;
-
-sma.tx_getvar(sma.remote_addr, OVAR_SIGNAL)
-
 #    25	R 7E 18 00 66 $ADDR 00 00 00 00 00 00 04 00 05 00 00 00 $END;
-
-sma.wait_outer(OTYPE_VARVAL, bytearray('\x00\x05\x00\x00\x00'))
-
 #    26	E $SIGNAL $END;
+
+sig = sma.getsignal()
+print("Signal %.1f" % sig)
+
 #    27	S 7E 14 00 6A 00 00 00 00 00 00 $ADDR 03 00 05 00 $END;
 #    28	R 7E 18 00 66 $ADDR 00 00 00 00 00 00 04 00 05 00 00 00 $END;
 #    29	S 7E 14 00 6A 00 00 00 00 00 00 $ADDR 03 00 05 00 $END;

@@ -82,6 +82,12 @@ class BTSMAConnectionCLI(BTSMAConnection):
 
     def rx_outer(self, from_, to_, type_, payload):
         dump_outer("Rx<     ", from_, to_, type_, payload)
+        if type_ == OTYPE_VARVAL:
+            varid = payload[1]
+            print("Rx<         VARVAL 0x%02x" % varid)
+            if varid == OVAR_SIGNAL:
+                print("Rx<             Signal level %0.1f%%"
+                      % (payload[5] / 255 * 100))
         super(BTSMAConnectionCLI, self).rx_outer(from_, to_,
                                                  type_, payload)
 
@@ -93,13 +99,6 @@ class BTSMAConnectionCLI(BTSMAConnection):
         dump_ppp("Rx<         ", protocol, payload)
         super(BTSMAConnectionCLI, self).rx_ppp(from_, protocol, payload)
 
-    def rx_varval(self, from_, varid, varval):
-        print("Rx<         VARVAL 0x%02x" % varid)
-        if varid == OVAR_SIGNAL:
-            print("Rx<             Signal level %0.1f%%"
-                  % (varval[2] / 255 * 100))
-        super(BTSMAConnectionCLI, self).rx_varval(from_, varid, varval)
-
     def tx_raw(self, pkt):
         super(BTSMAConnectionCLI, self).tx_raw(pkt)
         print("\n" + hexdump(pkt, "Tx> "))
@@ -108,18 +107,13 @@ class BTSMAConnectionCLI(BTSMAConnection):
         super(BTSMAConnectionCLI, self).tx_outer(from_, to_,
                                                  type_, payload)
         dump_outer("Tx>     ", from_, to_, type_, payload)
-
-    def tx_ppp_raw(self, to_, payload):
-        super(BTSMAConnectionCLI, self).tx_ppp_raw(to_, payload)
-        dump_ppp_raw("Tx>         ", payload)
+        if type_ == OTYPE_GETVAR:
+            varid = payload[1]
+            print("Tx>         GETVAR 0x%02x" % varid)
 
     def tx_ppp(self, to_, protocol, payload):
         super(BTSMAConnectionCLI, self).tx_ppp(to_, protocol, payload)
         dump_ppp("Tx>         ", protocol, payload)
-
-    def tx_getvar(self, to_, varid):
-        super(BTSMAConnectionCLI, self).tx_getvar(to_, varid)
-        print("Tx>         GETVAR 0x%02x" % varid)
 
     def cli(self):
         while True:
@@ -167,14 +161,13 @@ class BTSMAConnectionCLI(BTSMAConnection):
         self.tx_outer(from_, to_, type_, payload)
 
     def cmd_hello(self):
-        self.tx_hello()
+        self.tx_outer("00:00:00:00:00:00", self.remote_addr, OTYPE_HELLO,
+                      bytearray('\x00\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00'))
 
     def cmd_getvar(self, varid):
-        if varid == 'signal':
-            varid = OVAR_SIGNAL
-        else:
-            varid = int(varid, 16)
-        self.tx_getvar(self.remote_addr, varid)
+        varid = int(varid, 16)
+        self.tx_outer("00:00:00:00:00:00", self.remote_addr, OTYPE_GETVAR,
+                      bytearray([0x00, varid, 0x00]))
 
     def cmd_ppp(self, protocol, *args):
         protocol = int(protocol, 0)
