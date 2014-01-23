@@ -135,18 +135,16 @@ class BTSMAConnection(object):
         space = self.MAXBUFFER - len(self.rxbuf)
         self.rxbuf += self.sock.recv(space)
 
-        if len(self.rxbuf) < OUTER_HLEN:
-            return
+        while len(self.rxbuf) >= OUTER_HLEN:
+            pktlen = _check_header(self.rxbuf[:OUTER_HLEN])
 
-        pktlen = _check_header(self.rxbuf[:OUTER_HLEN])
+            if len(self.rxbuf) < pktlen:
+                return
 
-        if len(self.rxbuf) < pktlen:
-            return
+            pkt = self.rxbuf[:pktlen]
+            del self.rxbuf[:pktlen]
 
-        pkt = self.rxbuf[:pktlen]
-        del self.rxbuf[:pktlen]
-
-        self.rx_raw(pkt)
+            self.rx_raw(pkt)
 
     @waiter
     def rx_raw(self, pkt):
