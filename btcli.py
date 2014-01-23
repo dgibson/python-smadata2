@@ -56,12 +56,23 @@ def dump_ppp(prefix, protocol, payload):
     print(hexdump(payload, prefix + "    "))
 
 
+def a65602str(addr):
+    return "%02X.%02X.%02X.%02X.%02X.%02X" % tuple(addr)
+
+def dump_6560(prefix, from2, to2, x1, x2, x3, x4, x5, x6, counter, payload):
+    print("%sSMA %s => %s (pkt %d)" % (prefix, a65602str(from2),
+                                       a65602str(to2), counter))
+    print("%sCTRL %02x %02x | %02x %02x | %02x %02x" % (prefix, x1, x2, x3,
+                                                        x4, x5, x6))
+    print(hexdump(payload, prefix + "    "))
+
 class BTSMAConnectionCLI(BTSMAConnection):
     def __init__(self, addr):
         super(BTSMAConnectionCLI, self).__init__(addr)
         print("Connected %s -> %s"
               % (self.local_addr, self.remote_addr))
         self.rxpid = None
+        self.counter = 0
 
     def __del__(self):
         if self.rxpid:
@@ -88,16 +99,18 @@ class BTSMAConnectionCLI(BTSMAConnection):
             if varid == OVAR_SIGNAL:
                 print("Rx<             Signal level %0.1f%%"
                       % (payload[5] / 255 * 100))
+        elif (type_ in [OTYPE_PPP, OTYPE_PPP2]):
+            dump_ppp_raw("Rx<         ", payload)
         super(BTSMAConnectionCLI, self).rx_outer(from_, to_,
                                                  type_, payload)
-
-    def rx_ppp_raw(self, from_, payload):
-        dump_ppp_raw("Rx<         ", payload)
-        super(BTSMAConnectionCLI, self).rx_ppp_raw(from_, payload)
 
     def rx_ppp(self, from_, protocol, payload):
         dump_ppp("Rx<         ", protocol, payload)
         super(BTSMAConnectionCLI, self).rx_ppp(from_, protocol, payload)
+
+    def rx_6560(self, from2, to2, x1, x2, x3, x4, x5, x6, counter, payload):
+        dump_6560("Rx<             ", from2, to2, x1, x2, x3, x4, x5, x6,
+                  counter, payload)
 
     def tx_raw(self, pkt):
         super(BTSMAConnectionCLI, self).tx_raw(pkt)
@@ -114,6 +127,12 @@ class BTSMAConnectionCLI(BTSMAConnection):
     def tx_ppp(self, to_, protocol, payload):
         super(BTSMAConnectionCLI, self).tx_ppp(to_, protocol, payload)
         dump_ppp("Tx>         ", protocol, payload)
+
+    def tx_6560(self, from2, to2, x1, x2, x3, x4, x5, x6, counter, payload):
+        super(BTSMAConnectionCLI, self).tx_6560(from2, to2, x1, x2, x3, x4, x5, x6,
+                                                counter, payload)
+        dump_6560("Tx>             ", from2, to2, x1, x2, x3, x4, x5, x6,
+                  counter, payload)
 
     def cli(self):
         while True:
@@ -173,6 +192,18 @@ class BTSMAConnectionCLI(BTSMAConnection):
         protocol = int(protocol, 0)
         payload = bytearray([int(x, 16) for x in args])
         self.tx_ppp("ff:ff:ff:ff:ff:ff", protocol, payload)
+
+    def cmd_send2(self, x1, x2, x3, x4, x5, x6, *args):
+        self.counter += 1
+        x1 = int(x1, 16)
+        x2 = int(x2, 16)
+        x3 = int(x3, 16)
+        x4 = int(x4, 16)
+        x5 = int(x5, 16)
+        x6 = int(x6, 16)
+        payload = bytearray([int(x, 16) for x in args])
+        self.tx_6560(self.local_addr2, self.BROADCAST2,
+                     x1, x2, x3, x4, x5, x6, self.counter, payload)
 
     def cmd_cmd31(self):
         spl = bytearray('\x09\xA0\xFF\xFF\xFF\xFF\xFF\xFF\x00\x00\x78\x00\x3f\x10\xfb\x39\x00\x00\x00\x00\x00\x00\x01\x80\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')

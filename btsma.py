@@ -8,8 +8,9 @@ import bluetooth
 import readline
 
 __all__ = ['BTSMAConnection', 'BTSMAError',
-           'OTYPE_PPP', 'OTYPE_HELLO', 'OTYPE_GETVAR', 'OTYPE_VARVAL',
-           'OTYPE_ERROR',
+           'OTYPE_PPP', 'OTYPE_PPP2',
+           'OTYPE_HELLO', 'OTYPE_GETVAR',
+           'OTYPE_VARVAL', 'OTYPE_ERROR',
            'OVAR_SIGNAL']
 
 OUTER_HLEN = 17
@@ -22,6 +23,8 @@ OTYPE_ERROR = 0x07
 OTYPE_PPP2 = 0x08
 
 OVAR_SIGNAL = 0x05
+
+SMA_PROTOCOL_ID = 0x6560
 
 class BTSMAError(Exception):
     pass
@@ -109,6 +112,8 @@ def crc16(iv, data):
 
 class BTSMAConnection(object):
     MAXBUFFER = 512
+    BROADCAST = "ff:ff:ff:ff:ff:ff"
+    BROADCAST2 = bytearray('\xff\xff\xff\xff\xff\xff')
 
     def __init__(self, addr):
         self.sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
@@ -117,8 +122,10 @@ class BTSMAConnection(object):
         self.remote_addr = addr
         self.local_addr = self.sock.getsockname()[0]
 
+        self.local_addr2 = bytearray('\x78\x00\x3f\x10\xfb\x39')
+
         self.rxbuf = bytearray()
-        self.pppbuf = bytearray()
+        self.pppbuf = dict()
 
     #
     # RX side
@@ -150,20 +157,32 @@ class BTSMAConnection(object):
 
         self.rx_outer(from_, to_, type_, payload)
 
+    def rxfilter_outer(self, to_):
+        return ((to_ == self.local_addr)
+                or (to_ == self.BROADCAST)
+                or (to_ == "00:00:00:00:00:00"))
+        
     @waiter
     def rx_outer(self, from_, to_, type_, payload):
+        if not self.rxfilter_outer(to_):
+            return
+
         if (type_ == OTYPE_PPP) or (type_ == OTYPE_PPP2):
             self.rx_ppp_raw(from_, payload[1:])
 
-    @waiter
     def rx_ppp_raw(self, from_, payload):
-        self.pppbuf += payload
-        term = self.pppbuf.find('\x7e', 1)
+        if from_ not in self.pppbuf:
+            self.pppbuf[from_] = bytearray()
+        pppbuf = self.pppbuf[from_]
+
+        pppbuf.extend(payload)
+        term = pppbuf.find('\x7e', 1)
         if term < 0:
             return
 
-        raw = self.pppbuf[:term+1]
-        del self.pppbuf[:term+1]
+        raw = pppbuf[:term+1]
+        del pppbuf[:term+1]
+
         assert raw[-1] == 0x7e
         if raw[0] != 0x7e:
             raise BTSMAError("Missing flag byte on PPP packet")
@@ -191,6 +210,38 @@ class BTSMAConnection(object):
 
     @waiter
     def rx_ppp(self, from_, protocol, payload):
+        if protocol == SMA_PROTOCOL_ID:
+            def check_byte(n, val):
+                if payload[n] != val:
+                    raise BTSMAError("Unexpected value in byte %d of inner"
+                                     " packet (0x%02x instead of 0x%02x)"
+                                     % (n, payload[n], val))
+            x1 = payload[0]
+            x2 = payload[1]
+            to2 = payload[2:8]
+            x3 = payload[8]
+            x4 = payload[9]
+            from2 = payload[10:16]
+            check_byte(16, 0x00)
+            x5 = payload[17]
+            check_byte(18, 0x00)
+            check_byte(19, 0x00)
+            check_byte(20, 0x00)
+            check_byte(21, 0x00)
+            counter = payload[22]
+            x6 = payload[23]
+            spl = payload[24:]
+            self.rx_6560(from2, to2, x1, x2, x3, x4, x5, x6, counter, spl)
+
+    def rxfilter_6560(self, to2):
+        return ((to2 == self.local_addr2)
+                or (to2 == self.BROADCAST2))
+
+    @waiter
+    def rx_6560(self, from2, to2, x1, x2, x3, x4, x5, x6, counter, payload):
+        if not self.rxfilter_6560(to2):
+            return
+
         pass
 
     #
@@ -236,6 +287,22 @@ class BTSMAConnection(object):
 
         self.tx_outer(self.local_addr, to_, OTYPE_PPP,
                       bytearray('\x00') + rawpayload)
+
+    def tx_6560(self, from2, to2, x1, x2, x3, x4, x5, x6, counter, payload):
+        ppppayload = bytearray()
+        ppppayload.append(x1)
+        ppppayload.append(x2)
+        ppppayload.extend(to2)
+        ppppayload.append(x3)
+        ppppayload.append(x4)
+        ppppayload.extend(from2)
+        ppppayload.append(0x00)
+        ppppayload.append(x5)
+        ppppayload.extend([0] * 4)
+        ppppayload.append(counter)
+        ppppayload.append(x6)
+
+        self.tx_ppp(self.remote_addr, SMA_PROTOCOL_ID, ppppayload)
 
     def wait(self, class_, cond=None):
         self.waitvar = None
