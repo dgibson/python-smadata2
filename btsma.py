@@ -46,10 +46,12 @@ def _check_header(hdr):
     if len(hdr) < OUTER_HLEN:
         raise ValueError()
 
-    if (hdr[0] != 0x7e) or (hdr[2] != 0x00):
+    if hdr[0] != 0x7e:
         raise BTSMAError("Missing packet start marker")
-    if (hdr[3] != (hdr[1] ^ 0x7e)):
-        raise BTSMAError("Bad length bytes in packet")
+    if (hdr[1] > 0x70) or (hdr[2] != 0):
+        raise BTSMAError("Bad packet length")
+    if hdr[3] != (hdr[0] ^ hdr[1] ^ hdr[2]):
+        raise BTSMAError("Bad header check byte")
     return hdr[1]
 
 

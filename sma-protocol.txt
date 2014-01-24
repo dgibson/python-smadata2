@@ -34,9 +34,9 @@ Packet header
 Offset		Value
 ---------------------
 0		0x7e
-1		length of packet (including header)
+1		length of packet (including header), max 0x70
 2		0x00
-3		length of packet XORed with 0x7e
+3		check byte, XOR of bytes 0..2 inclusive
 4..9		"From" bluetooth address
 10..15		"To" bluetooth address
 16		Packet type
