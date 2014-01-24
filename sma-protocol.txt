@@ -39,9 +39,9 @@ Offset		Value
 3		check byte, XOR of bytes 0..2 inclusive
 4..9		"From" bluetooth address
 10..15		"To" bluetooth address
-16		Packet type
+16..17		Packet type (LE16)
 
-17..		Payload (format depends on packet type)
+18..		Payload (format depends on packet type)
 
 
 The bluetooth addresses are encoded in the reverse order to how
@@ -102,8 +102,7 @@ Offset		Value
 ---------------------
 16		0x03
 17		0x00
-18		variable ID
-19		0x00
+18..19		variable ID (LE16)
 
 Packet type 0x04: VARIABLE
 --------------------------
@@ -112,8 +111,7 @@ Offset		Value
 ---------------------
 16		0x04
 17		0x00
-18		variable ID
-19		0x00
+18..19		variable ID (LE16)
 20..		variable contents
 
 Variables:

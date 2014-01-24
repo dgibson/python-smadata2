@@ -11,9 +11,10 @@ __all__ = ['BTSMAConnection', 'BTSMAError',
            'OTYPE_PPP', 'OTYPE_PPP2',
            'OTYPE_HELLO', 'OTYPE_GETVAR',
            'OTYPE_VARVAL', 'OTYPE_ERROR',
-           'OVAR_SIGNAL']
+           'OVAR_SIGNAL',
+           'int2bytes16', 'bytes2int']
 
-OUTER_HLEN = 17
+OUTER_HLEN = 18
 
 OTYPE_PPP = 0x01
 OTYPE_HELLO = 0x02
@@ -69,6 +70,18 @@ def str2ba(s):
         raise ValueError("Bad length for bluetooth address");
     return bytearray(addr)
     
+
+def int2bytes16(v):
+    return bytearray([v & 0xff, v >> 8])
+
+
+def bytes2int(b):
+    v = 0
+    while b:
+        v = v << 8
+        v += b.pop()
+    return v
+
 
 crc16_table = [0x0000, 0x1189, 0x2312, 0x329b, 0x4624, 0x57ad, 0x6536, 0x74bf,
                0x8c48, 0x9dc1, 0xaf5a, 0xbed3, 0xca6c, 0xdbe5, 0xe97e, 0xf8f7,
@@ -152,7 +165,7 @@ class BTSMAConnection(object):
     def rx_raw(self, pkt):
         from_ = ba2str(pkt[4:10])
         to_ = ba2str(pkt[10:16])
-        type_ = pkt[16]
+        type_ = bytes2int(pkt[16:18])
         payload = pkt[OUTER_HLEN:]
 
         self.rx_outer(from_, to_, type_, payload)
@@ -168,7 +181,7 @@ class BTSMAConnection(object):
             return
 
         if (type_ == OTYPE_PPP) or (type_ == OTYPE_PPP2):
-            self.rx_ppp_raw(from_, payload[1:])
+            self.rx_ppp_raw(from_, payload)
 
     def rx_ppp_raw(self, from_, payload):
         if from_ not in self.pppbuf:
@@ -199,12 +212,12 @@ class BTSMAConnection(object):
         if (frame[0] != 0xff) or (frame[1] != 0x03):
             raise BTSMAError("Bad header on PPP frame")
 
-        pcrc = (frame[-1] << 8) + frame[-2]
+        pcrc = bytes2int(frame[-2:])
         ccrc = crc16(0xffff, frame[:-2])
         if pcrc != ccrc:
             raise BTSMAError("Bad CRC on PPP frame")
 
-        protocol = frame[2] + (frame[3] << 8)
+        protocol = bytes2int(frame[2:4])
         
         self.rx_ppp(from_, protocol, frame[4:-2])
 
@@ -257,7 +270,7 @@ class BTSMAConnection(object):
         pkt = bytearray([0x7e, pktlen, 0x00, pktlen ^ 0x7e])
         pkt += str2ba(from_)
         pkt += str2ba(to_)
-        pkt.append(type_)
+        pkt += int2bytes16(type_)
         pkt += payload
         assert _check_header(pkt) == pktlen
 
@@ -265,14 +278,9 @@ class BTSMAConnection(object):
 
     def tx_ppp(self, to_, protocol, payload):
         frame = bytearray('\xff\x03')
-        frame.append(protocol & 0xff)
-        frame.append(protocol >> 8)
+        frame += int2bytes16(protocol)
         frame += payload
-
-        crc = crc16(0xffff, frame)
-
-        frame.append(crc & 0xff)
-        frame.append(crc >> 8)
+        frame += int2bytes16(crc16(0xffff, frame))
 
         rawpayload = bytearray()
         rawpayload.append(0x7e)
@@ -285,8 +293,7 @@ class BTSMAConnection(object):
                 rawpayload.append(b)
         rawpayload.append(0x7e)
 
-        self.tx_outer(self.local_addr, to_, OTYPE_PPP,
-                      bytearray('\x00') + rawpayload)
+        self.tx_outer(self.local_addr, to_, OTYPE_PPP, rawpayload)
 
     def tx_6560(self, from2, to2, x1, x2, x3, x4, x5, x6, counter, payload):
         ppppayload = bytearray()
@@ -322,7 +329,7 @@ class BTSMAConnection(object):
 
     def hello(self):
         hellopkt = self.wait_outer(OTYPE_HELLO)
-        if hellopkt != bytearray('\x00\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00'):
+        if hellopkt != bytearray('\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00'):
             raise BTSMAError("Unexpected HELLO %r" % hellopkt)
         self.tx_outer("00:00:00:00:00:00", self.remote_addr,
                       OTYPE_HELLO, hellopkt)
@@ -330,10 +337,9 @@ class BTSMAConnection(object):
 
     def getvar(self, varid):
         self.tx_outer("00:00:00:00:00:00", self.remote_addr, OTYPE_GETVAR,
-                      bytearray([0x00, varid, 0x00]))
-        val = self.wait_outer(OTYPE_VARVAL, bytearray([0x00, varid, 0x00]))
-        return val[3:]
-
+                      int2bytes16(varid))
+        val = self.wait_outer(OTYPE_VARVAL, int2bytes16(varid))
+        return val[2:]
 
     def getsignal(self):
         val = self.getvar(OVAR_SIGNAL)
