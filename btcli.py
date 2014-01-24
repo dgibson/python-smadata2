@@ -160,7 +160,7 @@ class BTSMAConnectionCLI(BTSMAConnection):
     def cmd_quit(self):
         raise Quit()
 
-    def cmd_raw(self):
+    def cmd_raw(self, *args):
         pkt = bytearray([int(x,16) for x in args])
         self.tx_raw(pkt)
 
