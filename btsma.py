@@ -229,29 +229,28 @@ class BTSMAConnection(object):
                     raise BTSMAError("Unexpected value in byte %d of inner"
                                      " packet (0x%02x instead of 0x%02x)"
                                      % (n, payload[n], val))
-            x1 = payload[0]
-            x2 = payload[1]
+            a1 = payload[0]
+            a2 = payload[1]
             to2 = payload[2:8]
-            x3 = payload[8]
-            x4 = payload[9]
+            b1 = payload[8]
+            b2 = payload[9]
             from2 = payload[10:16]
-            check_byte(16, 0x00)
-            x5 = payload[17]
-            check_byte(18, 0x00)
-            check_byte(19, 0x00)
-            check_byte(20, 0x00)
-            check_byte(21, 0x00)
-            counter = payload[22]
+            c = payload[16:22]
+            tag = bytes2int(payload[22:24])
+            if not (tag & 0x8000):
+                raise BTSMAError("Tag value 0x%04x does not have high bit set"
+                                 % tag)
+            tag = tag & 0x7fff
             x6 = payload[23]
             spl = payload[24:]
-            self.rx_6560(from2, to2, x1, x2, x3, x4, x5, x6, counter, spl)
+            self.rx_6560(from2, to2, a1, a2, b1, b2, c, tag, spl)
 
     def rxfilter_6560(self, to2):
         return ((to2 == self.local_addr2)
                 or (to2 == self.BROADCAST2))
 
     @waiter
-    def rx_6560(self, from2, to2, x1, x2, x3, x4, x5, x6, counter, payload):
+    def rx_6560(self, from2, to2, a1, a2, b1, b2, c, tag, payload):
         if not self.rxfilter_6560(to2):
             return
 
@@ -295,19 +294,16 @@ class BTSMAConnection(object):
 
         self.tx_outer(self.local_addr, to_, OTYPE_PPP, rawpayload)
 
-    def tx_6560(self, from2, to2, x1, x2, x3, x4, x5, x6, counter, payload):
+    def tx_6560(self, from2, to2, a1, a2, b1, b2, c, tag, payload):
         ppppayload = bytearray()
-        ppppayload.append(x1)
-        ppppayload.append(x2)
+        ppppayload.append(a1)
+        ppppayload.append(a2)
         ppppayload.extend(to2)
-        ppppayload.append(x3)
-        ppppayload.append(x4)
+        ppppayload.append(b1)
+        ppppayload.append(b2)
         ppppayload.extend(from2)
-        ppppayload.append(0x00)
-        ppppayload.append(x5)
-        ppppayload.extend([0] * 4)
-        ppppayload.append(counter)
-        ppppayload.append(x6)
+        ppppayload.extend(c)
+        ppppayload.extend(int2bytes16(tag | 0x8000))
 
         self.tx_ppp(self.remote_addr, SMA_PROTOCOL_ID, ppppayload)
 
