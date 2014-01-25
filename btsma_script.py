@@ -31,7 +31,7 @@ print("Checking signal")
 #    26	E $SIGNAL $END;
 
 sig = sma.getsignal()
-print("Signal %.1f" % sig)
+print("Signal %.1f" % (sig * 100))
 
 #    27	S 7E 14 00 6A 00 00 00 00 00 00 $ADDR 03 00 05 00 $END;
 #    28	R 7E 18 00 66 $ADDR 00 00 00 00 00 00 04 00 05 00 00 00 $END;
@@ -41,46 +41,28 @@ print("Signal %.1f" % sig)
 
 magicaddr = [0x78, 0x00, 0x3f, 0x10, 0xfb, 0x39]
 count = 1
-sma.tx_6560(sma.local_addr2, sma.BROADCAST2,
-            0x09, 0xa0, 0x00, 0x00, bytearray('\x00\x00\x00\x00\x00\x00'), count,
+sma.do_6560(0x09, 0xa0, 0x00, 0x00, bytearray('\x00\x00\x00\x00\x00\x00'), count,
             bytearray('\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'))
-#sma.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, bytearray(
-#        [0x09, 0xa0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-#         0x00, 0x00] + magicaddr +
-#        [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, count, 0x80,
-#         0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]))
 
 #    32	S 7E 3B 00 45 $ADD2 FF FF FF FF FF FF 01 00 7E FF 03 60 65 08 A0 FF FF FF FF FF FF 00 03 78 00 $UNKNOWN 00 03 00 00 00 00 00 80 0E 01 FD FF FF FF FF FF $CRC 7E $END;
-sma.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, bytearray(
-        [0x08, 0xa0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-         0x00, 0x03] + magicaddr +
-        [0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80,
-         0x0e, 0x01, 0xfd, 0xff, 0xff, 0xff, 0xff, 0xff]))
+count += 1
+sma.do_6560(0x08, 0xa0, 0x00, 0x03, bytearray('\x00\x03\x00\x00\x00\x00'), count,
+            bytearray('\x0e\x01\xfd\xff\xff\xff\xff\xff'))
 
 #    33	S 7E 54 00 2A $ADD2 FF FF FF FF FF FF 01 00 7E FF 03 60 65 0E A0 FF FF FF FF FF FF 00 01 78 00 $UNKNOWN 00 01 00 00 00 00 $CNT 80 0C 04 FD FF 07 00 00 00 84 03 00 00 $TIME 00 00 00 00 $PASSWORD $CRC 7E $END;
 
 reporttime = int(time.time())
 print("reporttime = %d" % reporttime)
-timebytes = [reporttime & 0xff,
-             (reporttime >> 8) & 0xff,
-             (reporttime >> 16) & 0xff,
-             (reporttime >> 24) & 0xff]
 
-password = [(0x88 + ord('0')) & 0xff] * 4 + [0x88] * 8
+password = bytearray([(0x88 + ord('0')) & 0xff] * 4 + [0x88] * 8)
 
 count += 1
-sma.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, bytearray(
-        [0x0e, 0xa0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-         0x00, 0x01] + magicaddr +
-        [0x00, 0x01, 0x00, 0x00, 0x00, 0x00, count, 0x80,
-         0x0c, 0x04, 0xfd, 0xff, 0x07, 0x00, 0x00, 0x00, 0x84, 0x03, 0x00, 0x00]
-        + timebytes + [0x00, 0x00, 0x00, 0x00] + password))
+sma.do_6560(0x0e, 0xa0, 0x00, 0x01, bytearray('\x00\x01\x00\x00\x00\x00'), count,
+            bytearray('\x0c\x04\xfd\xff\x07\x00\x00\x00\x84\x03\x00\x00')
+            + int2bytes32(reporttime) + bytearray('\x00\x00\x00\x00') + password)
 
 #    34	#R 7E 6a 00 14 $ADDR $ADD2 $END;
 #    35	R 7E 6a 00 14 $ADDR $END;
-
-sma.wait('ppp', lambda f, pr, pl: len(pl) == 76)
-
 #    36	E $SER $END;
 #    37	:setinverter time $END;
 #    38	S 7E 14 00 6A 00 00 00 00 00 00 $ADDR 03 00 05 00 $END;
@@ -92,22 +74,14 @@ sma.wait('ppp', lambda f, pr, pl: len(pl) == 76)
 #    44	R 7E 18 00 66 $ADDR 00 00 00 00 00 00 04 00 05 00 00 00 $END;
 #    45	S 7e 5c 00 22 $ADD2 ff ff ff ff ff ff 01 00 7e ff 03 60 65 10 a0 ff ff ff ff ff ff 00 00 78 00 $UNKNOWN 00 00 00 00 00 00 $CNT 80 0a 02 00 f0 00 6d 23 00 00 6d 23 00 00 6d 23 00 $TIME $TIME $TIME $TIMEZONE 00 00 $TIMESET 01 00 00 00 $CRC 7e $END;
 
-def leint(val):
-    return [val & 0xff, (val >> 8) & 0xff, (val >> 16) & 0xff, (val >> 24) & 0xff]
-
 timeval = int(time.time())
-
-utime = leint(timeval)
-tz = leint(-time.timezone)
+utime = int2bytes32(timeval)
+tz = int2bytes32(-time.timezone)
 
 count += 1
-sma.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, bytearray(
-    [0x10, 0xa0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-     0x00, 0x00] + magicaddr + 
-    [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, count, 0x80,
-     0x0a, 0x02, 0x00, 0xf0, 0x00, 0x6d, 0x23, 0x00, 0x00, 0x6d, 0x23, 0x00, 0x00, 0x6d, 0x23, 0x00] +
-    utime + utime + utime + tz +
-    [0x00, 0x00] + utime + [0x01, 0x00, 0x00, 0x00]))
+sma.do_6560(0x10, 0xa0, 0x00, 0x00, bytearray('\x00\x00\x00\x00\x00\x00'), count,
+            bytearray('\x0a\x02\x00\xf0\x00\x6d\x23\x00\x00\x6d\x23\x00\x00\x6d\x23\x00') +
+            utime + utime + utime + tz + bytearray('\x00\x00') + utime + bytearray('\x01\x00\x00\x00'))
 
 #    46	:startsetup time $END;
 #    47	S 7E 14 00 6A 00 00 00 00 00 00 $ADDR 03 00 05 00 $END;
@@ -120,45 +94,30 @@ sma.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, bytearray(
 #    54	S 7e 5b 00 25 $ADD2 ff ff ff ff ff ff 01 00 7e ff 03 60 65 10 a0 ff ff ff ff ff ff 00 00 78 00 $UNKNOWN 00 00 00 00 00 00 $CNT 80 0a 02 00 f0 00 6d 23 00 00 6d 23 00 00 6d 23 00 $TMPL $TMMI $TMPL 00 00 00 00 01 00 00 00 01 00 00 00 $CRC 7e $END;
 
 count += 1
-sma.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, bytearray(
-    [0x10, 0xa0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-     0x00, 0x00] + magicaddr + 
-    [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, count, 0x80,
-     0x0a, 0x02, 0x00, 0xf0, 0x00, 0x6d, 0x23, 0x00, 0x00, 0x6d, 0x23, 0x00, 0x00, 0x6d, 0x23, 0x00] +
-    leint(timeval+1) + leint(timeval - 1) + leint(timeval + 1) +
-    [0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00]))
+sma.do_6560(0x10, 0xa0, 0x00, 0x00, bytearray('\x00\x00\x00\x00\x00\x00'), count,
+            bytearray('\x0a\x02\x00\xf0\x00\x6d\x23\x00\x00\x6d\x23\x00\x00\x6d\x23\x00')
+            + int2bytes32(timeval+1) + int2bytes32(timeval - 1) + int2bytes32(timeval + 1)
+            + bytearray('\x00\x00\x00\x00\x01\x00\x00\x00\x01\x00\x00\x00'))
 
 #    55	S 7E 3F 00 41 $ADD2 FF FF FF FF FF FF 01 00 7E FF 03 60 65 09 A0 FF FF FF FF FF FF 00 00 78 00 $UNKNOWN 00 00 00 00 00 00 $CNT 80 00 02 00 58 00 1E 82 00 FF 21 82 00 $CRC 7E $END;
 
 count += 1
-sma.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, bytearray(
-    [0x09, 0xa0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-     0x00, 0x00] + magicaddr +
-    [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, count, 0x80,
-     0x00, 0x02, 0x00, 0x58, 0x00, 0x1e, 0x82, 0x00, 0xff, 0x21, 0x82, 0x00]))
+sma.do_6560(0x09, 0xa0, 0x00, 0x00, bytearray('\x00\x00\x00\x00\x00\x00'), count,
+            bytearray('\x00\x02\x00\x58\x00\x1e\x82\x00\xff\x21\x82\x00'))
 
 #    56	S 7E 3F 00 41 $ADD2 FF FF FF FF FF FF 01 00 7E FF 03 60 65 09 A0 FF FF FF FF FF FF 00 00 78 00 $UNKNOWN 00 00 00 00 00 00 $CNT 80 00 02 00 58 00 1e a2 00 FF 1e a2 00 $CRC 7E $END;
 
 count += 1
-sma.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, bytearray(
-    [0x09, 0xa0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-     0x00, 0x00] + magicaddr + 
-    [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, count, 0x80,
-     0x00, 0x02, 0x00, 0x58, 0x00, 0x1e, 0xa2, 0x00, 0xff, 0x1e, 0xa2, 0x00]))
+sma.do_6560(0x09, 0xa0, 0x00, 0x00, bytearray('\x00\x00\x00\x00\x00\x00'), count,
+            bytearray('\x00\x02\x00\x58\x00\x1e\xa2\x00\xff\x1e\xa2\x00'))
 
 #    57	S 7E 3F 00 41 $ADD2 FF FF FF FF FF FF 01 00 7E FF 03 60 65 09 A0 FF FF FF FF FF FF 00 00 78 00 $UNKNOWN 00 00 00 00 00 00 $CNT 80 00 02 80 51 00 48 21 00 FF 48 21 00 $CRC 7E $END;
 
 count += 1
-sma.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, bytearray(
-    [0x09, 0xa0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-     0x00, 0x00] + magicaddr +
-    [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, count, 0x80,
-     0x00, 0x02, 0x80, 0x51, 0x00, 0x48, 0x21, 0x00, 0xff, 0x48, 0x21, 0x00]))
+sma.do_6560(0x09, 0xa0, 0x00, 0x00, bytearray('\x00\x00\x00\x00\x00\x00'), count,
+            bytearray('\x00\x02\x80\x51\x00\x48\x21\x00\xff\x48\x21\x00'))
 
 #    58	R 7e 5a 00 24 $ADDR $ADD2 01 00 7e ff 03 60 65 $END;
-
-sma.wait('ppp')
-
 #    59	E $TIMESTRING $END;
 #    60	S 7E 5B 00 25 $ADD2 FF FF FF FF FF FF 01 00 7E FF 03 60 65 10 A0 FF FF FF FF FF FF 00 00 78 00 $UNKNOWN 00 00 00 00 00 00 $CNT 80 0A 02 00 F0 00 6D 23 00 00 6D 23 00 00 6D 23 00 $TIMESTRING $CRC 7E $END;
 

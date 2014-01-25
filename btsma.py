@@ -12,7 +12,7 @@ __all__ = ['BTSMAConnection', 'BTSMAError',
            'OTYPE_HELLO', 'OTYPE_GETVAR',
            'OTYPE_VARVAL', 'OTYPE_ERROR',
            'OVAR_SIGNAL',
-           'int2bytes16', 'bytes2int']
+           'int2bytes16', 'int2bytes32', 'bytes2int']
 
 OUTER_HLEN = 18
 
@@ -73,6 +73,10 @@ def str2ba(s):
 
 def int2bytes16(v):
     return bytearray([v & 0xff, v >> 8])
+
+
+def int2bytes32(v):
+    return bytearray([v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, v >> 24])
 
 
 def bytes2int(b):
@@ -323,6 +327,12 @@ class BTSMAConnection(object):
                 return payload
         return self.wait('outer', wfn)
 
+    def wait_6560(self, wtag):
+        def tagfn(from2, to2, a1, a2, b1, b2, c, tag, payload):
+            if tag == wtag:
+                return (from2, to2, a1, a2, b1, b2, c, payload)
+        return self.wait('6560', tagfn)
+
     def hello(self):
         hellopkt = self.wait_outer(OTYPE_HELLO)
         if hellopkt != bytearray('\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00'):
@@ -339,4 +349,9 @@ class BTSMAConnection(object):
 
     def getsignal(self):
         val = self.getvar(OVAR_SIGNAL)
-        return val[3] / 0xff
+        return val[2] / 0xff
+
+    def do_6560(self, a1, a2, b1, b2, c, tag, payload):
+        self.tx_6560(self.local_addr2, self.BROADCAST2, a1, a2, b1, b2,
+                     c, tag, payload)
+        return self.wait_6560(tag)

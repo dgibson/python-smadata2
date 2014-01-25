@@ -114,6 +114,8 @@ class BTSMAConnectionCLI(BTSMAConnection):
 
     def rx_6560(self, from2, to2, a1, a2, b1, b2, c, tag, payload):
         dump_6560("Rx<             ", from2, to2, a1, a2, b1, b2, c, tag, payload)
+        super(BTSMAConnectionCLI, self).rx_6560(from2, to2, a1, a2, b1, b2,
+                                                c, tag, payload)
 
     def tx_raw(self, pkt):
         super(BTSMAConnectionCLI, self).tx_raw(pkt)
@@ -207,25 +209,29 @@ class BTSMAConnectionCLI(BTSMAConnection):
                      a1, a2, b1, b2, c, self.counter, payload)
 
     def cmd_cmd31(self):
-        spl = bytearray('\x09\xA0\xFF\xFF\xFF\xFF\xFF\xFF\x00\x00\x78\x00\x3f\x10\xfb\x39\x00\x00\x00\x00\x00\x00\x01\x80\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
-        self.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, spl)
-
-    def cmd_cmd31a(self):
-        spl = bytearray('\x09\xA0\xFF\xFF\xFF\xFF\xFF\xFF\x00\x00\x78\x00\x3f\x10\xfb\x39\x00\x00\x00\x00\x00\x00\x00\x80\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
-        self.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, spl)
-
+        self.counter += 1
+        self.tx_6560(self.local_addr2, self.BROADCAST2, 0x09, 0xa0, 0x00, 0x00,
+                     bytearray('\x00\x00\x00\x00\x00\x00'), self.counter,
+                     bytearray('\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'))
 
     def cmd_cmd57(self):
-        spl = bytearray('\x09\xA0\xFF\xFF\xFF\xFF\xFF\xFF\x00\x00\x78\x00\x3f\x10\xfb\x39\x00\x00\x00\x00\x00\x00\x00\x80\x00\x02\x80\x51\x00\x48\x21\x00\xFF\x48\x21\x00')
-        self.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, spl)
+        self.counter += 1
+        self.tx_6560(self.local_addr2, self.BROADCAST2, 0x09, 0xa0, 0x00, 0x00,
+                     bytearray('\x00\x00\x00\x00\x00\x00'), self.counter,
+                     bytearray('\x00\x80\x00\x02\x80\x51\x00\x48\x21\x00\xFF\x48\x21\x00'))
 
     def cmd_cmd60(self):
-        spl = bytearray('\x09\xa1\xff\xff\xff\xff\xff\xff\x00\x00\x78\x00\x3f\x10\xfb\x39\x00\x00\x00\x00\x00\x00\x00\x80\x00\x02\x00\x51\x00\x00\x20\x00\xff\xff\x50\x00\x0e')
-        self.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, spl)
+        self.counter += 1
+        self.tx_6560(self.local_addr2, self.BROADCAST2, 0x09, 0xa1, 0x00, 0x00,
+                     bytearray('\x00\x00\x00\x00\x00\x00'), self.counter,
+                     bytearray('\x00\x02\x00\x51\x00\x00\x20\x00\xff\xff\x50\x00\x0e'))
 
     def cmd_cmd82(self):
-        spl = bytearray('\x09\xE0\x4e\x00\xe1\x7e\xf6\x7e\x00\x00\x78\x00\x3f\x10\xfb\x39\x00\x00\x00\x00\x00\x00\x01\x80\x00\x02\x00\x70\x00\x27\x0e\x50\x80\x5a\xc3\x52')
-        self.tx_ppp("ff:ff:ff:ff:ff:ff", 0x6560, spl)
+        self.counter += 1
+        self.tx_6560(self.local_addr2, self.BROADCAST2, 0x09, 0xE0, 0x00, 0x00,
+                     bytearray('\x00\x00\x00\x00\x00\x00'), self.counter,
+                     bytearray('\x00\x02\x00\x70\x00\x27\x0e\x50\x80\x5a\xc3\x52'))
+
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
