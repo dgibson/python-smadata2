@@ -308,6 +308,7 @@ class BTSMAConnection(object):
         ppppayload.extend(from2)
         ppppayload.extend(c)
         ppppayload.extend(int2bytes16(tag | 0x8000))
+        ppppayload.extend(payload)
 
         self.tx_ppp(self.remote_addr, SMA_PROTOCOL_ID, ppppayload)
 

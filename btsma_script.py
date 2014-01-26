@@ -46,7 +46,7 @@ sma.do_6560(0x09, 0xa0, 0x00, 0x00, bytearray('\x00\x00\x00\x00\x00\x00'), count
 
 #    32	S 7E 3B 00 45 $ADD2 FF FF FF FF FF FF 01 00 7E FF 03 60 65 08 A0 FF FF FF FF FF FF 00 03 78 00 $UNKNOWN 00 03 00 00 00 00 00 80 0E 01 FD FF FF FF FF FF $CRC 7E $END;
 count += 1
-sma.do_6560(0x08, 0xa0, 0x00, 0x03, bytearray('\x00\x03\x00\x00\x00\x00'), count,
+sma.do_6560(0x08, 0xa0, 0x00, 0x03, bytearray('\x00\x03\x00\x00\x00\x00'), 0,
             bytearray('\x0e\x01\xfd\xff\xff\xff\xff\xff'))
 
 #    33	S 7E 54 00 2A $ADD2 FF FF FF FF FF FF 01 00 7E FF 03 60 65 0E A0 FF FF FF FF FF FF 00 01 78 00 $UNKNOWN 00 01 00 00 00 00 $CNT 80 0C 04 FD FF 07 00 00 00 84 03 00 00 $TIME 00 00 00 00 $PASSWORD $CRC 7E $END;

@@ -26,7 +26,7 @@ def hexdump(data, prefix):
             s += '-'
         else:
             s += ' '
-    if s[-1] == '\n':
+    if s and (s[-1] == '\n'):
         s = s[:-1]
     return s
 
