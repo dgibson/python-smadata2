@@ -155,7 +155,7 @@ Inner protocol (PPP protocol 0x6560)
 
 Offset		Value
 ----------------------
-0		?
+0		Length of packet, in 32-bit words, including (inner) header, but not ppp header??
 1		?
 2..7		to address
 8		?
