@@ -146,6 +146,12 @@ class BTSMAConnection(object):
         self.rxbuf = bytearray()
         self.pppbuf = dict()
 
+        self.tagcounter = 0
+
+    def gettag(self):
+        self.tagcounter += 1
+        return self.tagcounter
+
     #
     # RX side
     #
@@ -299,6 +305,9 @@ class BTSMAConnection(object):
         self.tx_outer(self.local_addr, to_, OTYPE_PPP, rawpayload)
 
     def tx_6560(self, from2, to2, a1, a2, b1, b2, c, tag, payload):
+        if len(c) != 6:
+            raise ValueError("CTRLC must have 6 bytes")
+
         ppppayload = bytearray()
         ppppayload.append(a1)
         ppppayload.append(a2)
@@ -310,7 +319,34 @@ class BTSMAConnection(object):
         ppppayload.extend(int2bytes16(tag | 0x8000))
         ppppayload.extend(payload)
 
-        self.tx_ppp(self.remote_addr, SMA_PROTOCOL_ID, ppppayload)
+        self.tx_ppp("ff:ff:ff:ff:ff:ff", SMA_PROTOCOL_ID, ppppayload)
+        return tag
+
+    def tx_logon(self, password='0000'):
+        if len(password) > 12:
+            raise ValueError
+        password += '\x00' * (12 - len(password))
+        tag = self.gettag()
+
+        payload = bytearray('\x0c\x04\xfd\xff\x07\x00\x00\x00\x84\x03\x00\x00')
+        payload += int2bytes32(0xbbbbaaaa) # timestamp?
+        payload += bytearray('\x00\x00\x00\x00')
+        payload += bytearray(((ord(c) + 0x88) % 0xff) for c in password)
+        return self.tx_6560(self.local_addr2, self.BROADCAST2, 0x0e, 0xa0,
+                            0x00, 0x01, bytearray('\x00\x01\x00\x00\x00\x00'),
+                            tag, payload)
+
+    def tx_gdy(self):
+        return self.tx_6560(self.local_addr2, self.BROADCAST2,
+                            0x09, 0xa0, 0x00, 0x00,
+                            bytearray('\x00\x00\x00\x00\x00\x00'), self.gettag(),
+                            bytearray('\x00\x02\x00\x54\x00\x22\x26\x00\xff\x22\x26\x00'))
+
+    def tx_yield(self):
+        return self.tx_6560(self.local_addr2, self.BROADCAST2,
+                            0x09, 0xa0, 0x00, 0x00,
+                            bytearray('\x00\x00\x00\x00\x00\x00'), self.gettag(),
+                            bytearray('\x00\x02\x00\x54\x00\x01\x26\x00\xff\x01\x26\x00'))
 
     def wait(self, class_, cond=None):
         self.waitvar = None
@@ -334,6 +370,8 @@ class BTSMAConnection(object):
                 return (from2, to2, a1, a2, b1, b2, c, payload)
         return self.wait('6560', tagfn)
 
+    # Operations
+
     def hello(self):
         hellopkt = self.wait_outer(OTYPE_HELLO)
         if hellopkt != bytearray('\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00'):
@@ -356,3 +394,7 @@ class BTSMAConnection(object):
         self.tx_6560(self.local_addr2, self.BROADCAST2, a1, a2, b1, b2,
                      c, tag, payload)
         return self.wait_6560(tag)
+
+    def logon(self, password='0000'):
+        tag = self.tx_logon(password)
+        self.wait_6560(tag)

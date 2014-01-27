@@ -72,7 +72,6 @@ class BTSMAConnectionCLI(BTSMAConnection):
         print("Connected %s -> %s"
               % (self.local_addr, self.remote_addr))
         self.rxpid = None
-        self.counter = 0
 
     def __del__(self):
         if self.rxpid:
@@ -204,32 +203,41 @@ class BTSMAConnectionCLI(BTSMAConnection):
         c = bytearray(bb[4:10])
         payload = bb[10:]
 
-        self.counter += 1
         self.tx_6560(self.local_addr2, self.BROADCAST2,
-                     a1, a2, b1, b2, c, self.counter, payload)
+                     a1, a2, b1, b2, c, self.gettag(), payload)
+
+    def cmd_logon(self, password='0000'):
+        self.tx_logon(password)
+
+    def cmd_gdy(self):
+        self.tx_gdy()
+
+    def cmd_yield(self):
+        self.tx_yield()
 
     def cmd_cmd31(self):
-        self.counter += 1
         self.tx_6560(self.local_addr2, self.BROADCAST2, 0x09, 0xa0, 0x00, 0x00,
-                     bytearray('\x00\x00\x00\x00\x00\x00'), self.counter,
+                     bytearray('\x00\x00\x00\x00\x00\x00'), self.gettag(),
                      bytearray('\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'))
 
+    def cmd_cmd32(self):
+        self.tx_6560(self.local_addr2, self.BROADCAST2, 0x08, 0xa0, 0x00, 0x03,
+                     bytearray('\x00\x03\x00\x00\x00\x00'), 0,
+                     bytearray('\x0e\x01\xfd\xff\xff\xff\xff\xff'))
+
     def cmd_cmd57(self):
-        self.counter += 1
         self.tx_6560(self.local_addr2, self.BROADCAST2, 0x09, 0xa0, 0x00, 0x00,
-                     bytearray('\x00\x00\x00\x00\x00\x00'), self.counter,
+                     bytearray('\x00\x00\x00\x00\x00\x00'), self.gettag(),
                      bytearray('\x00\x80\x00\x02\x80\x51\x00\x48\x21\x00\xFF\x48\x21\x00'))
 
     def cmd_cmd60(self):
-        self.counter += 1
         self.tx_6560(self.local_addr2, self.BROADCAST2, 0x09, 0xa1, 0x00, 0x00,
-                     bytearray('\x00\x00\x00\x00\x00\x00'), self.counter,
+                     bytearray('\x00\x00\x00\x00\x00\x00'), self.gettag(),
                      bytearray('\x00\x02\x00\x51\x00\x00\x20\x00\xff\xff\x50\x00\x0e'))
 
     def cmd_cmd82(self):
-        self.counter += 1
         self.tx_6560(self.local_addr2, self.BROADCAST2, 0x09, 0xE0, 0x00, 0x00,
-                     bytearray('\x00\x00\x00\x00\x00\x00'), self.counter,
+                     bytearray('\x00\x00\x00\x00\x00\x00'), self.gettag(),
                      bytearray('\x00\x02\x00\x70\x00\x27\x0e\x50\x80\x5a\xc3\x52'))
 
 
