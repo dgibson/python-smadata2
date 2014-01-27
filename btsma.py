@@ -245,22 +245,24 @@ class BTSMAConnection(object):
             b1 = payload[8]
             b2 = payload[9]
             from2 = payload[10:16]
-            c = payload[16:22]
+            c1 = payload[16]
+            c2 = payload[17]
+            error = bytes2int(payload[18:20])
+            pktcount = bytes2int(payload[20:22])
             tag = bytes2int(payload[22:24])
-            if not (tag & 0x8000):
-                raise BTSMAError("Tag value 0x%04x does not have high bit set"
-                                 % tag)
+            first = bool(tag & 0x8000)
             tag = tag & 0x7fff
-            x6 = payload[23]
             spl = payload[24:]
-            self.rx_6560(from2, to2, a1, a2, b1, b2, c, tag, spl)
+            self.rx_6560(from2, to2, a1, a2, b1, b2, c1, c2, tag, spl,
+                         error, pktcount, first)
 
     def rxfilter_6560(self, to2):
         return ((to2 == self.local_addr2)
                 or (to2 == self.BROADCAST2))
 
     @waiter
-    def rx_6560(self, from2, to2, a1, a2, b1, b2, c, tag, payload):
+    def rx_6560(self, from2, to2, a1, a2, b1, b2, c1, c2, tag, payload,
+                error, pktcount, first):
         if not self.rxfilter_6560(to2):
             return
 
@@ -304,10 +306,8 @@ class BTSMAConnection(object):
 
         self.tx_outer(self.local_addr, to_, OTYPE_PPP, rawpayload)
 
-    def tx_6560(self, from2, to2, a1, a2, b1, b2, c, tag, payload):
-        if len(c) != 6:
-            raise ValueError("CTRLC must have 6 bytes")
-
+    def tx_6560(self, from2, to2, a1, a2, b1, b2, c1, c2, tag, payload,
+                error=0, pktcount=0, first=True):
         ppppayload = bytearray()
         ppppayload.append(a1)
         ppppayload.append(a2)
@@ -315,8 +315,15 @@ class BTSMAConnection(object):
         ppppayload.append(b1)
         ppppayload.append(b2)
         ppppayload.extend(from2)
-        ppppayload.extend(c)
-        ppppayload.extend(int2bytes16(tag | 0x8000))
+        ppppayload.append(c1)
+        ppppayload.append(c2)
+        ppppayload.extend(int2bytes16(error))
+        ppppayload.extend(int2bytes16(pktcount))
+        if first:
+            xtag = tag | 0x8000
+        else:
+            xtag = tag
+        ppppayload.extend(int2bytes16(xtag))
         ppppayload.extend(payload)
 
         self.tx_ppp("ff:ff:ff:ff:ff:ff", SMA_PROTOCOL_ID, ppppayload)
@@ -333,19 +340,16 @@ class BTSMAConnection(object):
         payload += bytearray('\x00\x00\x00\x00')
         payload += bytearray(((ord(c) + 0x88) % 0xff) for c in password)
         return self.tx_6560(self.local_addr2, self.BROADCAST2, 0x0e, 0xa0,
-                            0x00, 0x01, bytearray('\x00\x01\x00\x00\x00\x00'),
-                            tag, payload)
+                            0x00, 0x01, 0x00, 0x01, tag, payload)
 
     def tx_gdy(self):
         return self.tx_6560(self.local_addr2, self.BROADCAST2,
-                            0x09, 0xa0, 0x00, 0x00,
-                            bytearray('\x00\x00\x00\x00\x00\x00'), self.gettag(),
+                            0x09, 0xa0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
                             bytearray('\x00\x02\x00\x54\x00\x22\x26\x00\xff\x22\x26\x00'))
 
     def tx_yield(self):
         return self.tx_6560(self.local_addr2, self.BROADCAST2,
-                            0x09, 0xa0, 0x00, 0x00,
-                            bytearray('\x00\x00\x00\x00\x00\x00'), self.gettag(),
+                            0x09, 0xa0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
                             bytearray('\x00\x02\x00\x54\x00\x01\x26\x00\xff\x01\x26\x00'))
 
     def wait(self, class_, cond=None):
@@ -365,9 +369,12 @@ class BTSMAConnection(object):
         return self.wait('outer', wfn)
 
     def wait_6560(self, wtag):
-        def tagfn(from2, to2, a1, a2, b1, b2, c, tag, payload):
+        def tagfn(from2, to2, a1, a2, b1, b2, c1, c2, tag, payload,
+                  error, pktcount, first):
             if tag == wtag:
-                return (from2, to2, a1, a2, b1, b2, c, payload)
+                if (pktcount != 0) or not first:
+                    raise BTSMAError("FIXME: Handle multi packet replies")
+                return (from2, to2, a1, a2, b1, b2, c1, c2, payload)
         return self.wait('6560', tagfn)
 
     # Operations
@@ -390,9 +397,9 @@ class BTSMAConnection(object):
         val = self.getvar(OVAR_SIGNAL)
         return val[2] / 0xff
 
-    def do_6560(self, a1, a2, b1, b2, c, tag, payload):
-        self.tx_6560(self.local_addr2, self.BROADCAST2, a1, a2, b1, b2,
-                     c, tag, payload)
+    def do_6560(self, a1, a2, b1, b2, c1, c2, tag, payload):
+        self.tx_6560(self.local_addr2, self.BROADCAST2, a1, a2, b1, b2, c1, c2,
+                     tag, payload)
         return self.wait_6560(tag)
 
     def logon(self, password='0000'):

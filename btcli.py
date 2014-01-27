@@ -59,11 +59,18 @@ def dump_ppp(prefix, protocol, payload):
 def a65602str(addr):
     return "%02X.%02X.%02X.%02X.%02X.%02X" % tuple(addr)
 
-def dump_6560(prefix, from2, to2, a1, a2, b1, b2, c, tag, payload):
-    print("%sSMA %s => %s  TAG %04X" % (prefix, a65602str(from2),
-                                        a65602str(to2), tag))
-    print("%sCTRLA %02x/%02x  CTRLB %02x/%02x  CTRLC %s"
-          % (prefix, a1, a2, b1, b2, "/".join(["%02x" % v for v in c])))
+def dump_6560(prefix, from2, to2, a1, a2, b1, b2, c1, c2,
+              tag, payload, error, pktcount, first):
+    if first:
+        s = "first of %d" % (pktcount + 1)
+    else:
+        s = "%d left" % pktcount
+    if error:
+        s += "ERROR 0x%04x" % error
+    print("%sSMA %s => %s  TAG %04X [%s]" % (prefix, a65602str(from2),
+                                           a65602str(to2), tag, s))
+    print("%sCTRLA %02x/%02x  CTRLB %02x/%02x  CTRLC %02x/%02x"
+          % (prefix, a1, a2, b1, b2, c1, c2))
     print(hexdump(payload, prefix + "    "))
 
 class BTSMAConnectionCLI(BTSMAConnection):
@@ -111,10 +118,13 @@ class BTSMAConnectionCLI(BTSMAConnection):
         dump_ppp("Rx<         ", protocol, payload)
         super(BTSMAConnectionCLI, self).rx_ppp(from_, protocol, payload)
 
-    def rx_6560(self, from2, to2, a1, a2, b1, b2, c, tag, payload):
-        dump_6560("Rx<             ", from2, to2, a1, a2, b1, b2, c, tag, payload)
+    def rx_6560(self, from2, to2, a1, a2, b1, b2, c1, c2, tag, payload,
+                error, pktcount, first):
+        dump_6560("Rx<             ", from2, to2, a1, a2, b1, b2, c1, c2,
+                  tag, payload, error, pktcount, first)
         super(BTSMAConnectionCLI, self).rx_6560(from2, to2, a1, a2, b1, b2,
-                                                c, tag, payload)
+                                                c1, c2, tag, payload,
+                                                error, pktcount, first)
 
     def tx_raw(self, pkt):
         super(BTSMAConnectionCLI, self).tx_raw(pkt)
@@ -132,10 +142,13 @@ class BTSMAConnectionCLI(BTSMAConnection):
         super(BTSMAConnectionCLI, self).tx_ppp(to_, protocol, payload)
         dump_ppp("Tx>         ", protocol, payload)
 
-    def tx_6560(self, from2, to2, a1, a2, b1, b2, c, tag, payload):
+    def tx_6560(self, from2, to2, a1, a2, b1, b2, c1, c2, tag, payload,
+                error=0, pktcount=0, first=True):
         super(BTSMAConnectionCLI, self).tx_6560(from2, to2, a1, a2, b1, b2,
-                                                c, tag, payload)
-        dump_6560("Tx>             ", from2, to2, a1, a2, b1, b2, c, tag, payload)
+                                                c1, c2, tag, payload,
+                                                error, pktcount, first)
+        dump_6560("Tx>             ", from2, to2, a1, a2, b1, b2, c1, c2,
+                  tag, payload, error, pktcount, first)
 
     def cli(self):
         while True:
@@ -200,11 +213,11 @@ class BTSMAConnectionCLI(BTSMAConnection):
         bb = bytearray([int(x, 16) for x in args])
         a1, a2 = bb[0], bb[1]
         b1, b2 = bb[2], bb[3]
-        c = bytearray(bb[4:10])
-        payload = bb[10:]
+        c1, c2 = bb[4], bb[5]
+        payload = bb[6:]
 
         self.tx_6560(self.local_addr2, self.BROADCAST2,
-                     a1, a2, b1, b2, c, self.gettag(), payload)
+                     a1, a2, b1, b2, c1, c2, self.gettag(), payload)
 
     def cmd_logon(self, password='0000'):
         self.tx_logon(password)
