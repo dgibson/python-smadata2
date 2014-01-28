@@ -333,13 +333,14 @@ class BTSMAConnection(object):
         self.tx_ppp("ff:ff:ff:ff:ff:ff", SMA_PROTOCOL_ID, ppppayload)
         return tag
 
-    def tx_logon(self, password='0000'):
+    def tx_logon(self, password='0000', timeout = 900):
         if len(password) > 12:
             raise ValueError
         password += '\x00' * (12 - len(password))
         tag = self.gettag()
 
-        payload = bytearray('\x0c\x04\xfd\xff\x07\x00\x00\x00\x84\x03\x00\x00')
+        payload = bytearray('\x0c\x04\xfd\xff\x07\x00\x00\x00')
+        payload += int2bytes32(timeout)
         payload += int2bytes32(0xbbbbaaaa) # timestamp?
         payload += bytearray('\x00\x00\x00\x00')
         payload += bytearray(((ord(c) + 0x88) % 0xff) for c in password)
@@ -355,6 +356,14 @@ class BTSMAConnection(object):
         return self.tx_6560(self.local_addr2, self.BROADCAST2,
                             0xa0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
                             bytearray('\x00\x02\x00\x54\x00\x01\x26\x00\xff\x01\x26\x00'))
+
+    def tx_historic(self, fromtime, totime):
+        payload = bytearray('\x00\x02\x00\x70')
+        payload += int2bytes32(fromtime)
+        payload += int2bytes32(totime)
+        return self.tx_6560(self.local_addr2, self.BROADCAST2,
+                            0xe0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
+                            payload)
 
     def wait(self, class_, cond=None):
         self.waitvar = None

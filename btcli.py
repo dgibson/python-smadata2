@@ -6,6 +6,7 @@ import sys
 import os
 import signal
 import readline
+import time
 from btsma import *
 
 
@@ -221,14 +222,24 @@ class BTSMAConnectionCLI(BTSMAConnection):
         self.tx_6560(self.local_addr2, self.BROADCAST2,
                      a2, b1, b2, c1, c2, self.gettag(), payload)
 
-    def cmd_logon(self, password='0000'):
-        self.tx_logon(password)
+    def cmd_logon(self, password='0000', timeout=900):
+        timeout = int(timeout)
+        self.tx_logon(password, timeout)
 
     def cmd_gdy(self):
         self.tx_gdy()
 
     def cmd_yield(self):
         self.tx_yield()
+
+    def cmd_historic(self, fromtime=None, totime=None):
+        if fromtime is None and totime is None:
+            fromtime = 1356958800 # 1 Jan 2013
+            totime = int(time.time()) # now
+        else:
+            fromtime = int(fromtime)
+            totime = int(totime)
+        self.tx_historic(fromtime, totime)
 
     def cmd_cmd31(self):
         self.tx_6560(self.local_addr2, self.BROADCAST2, 0xa0, 0x00, 0x00,
