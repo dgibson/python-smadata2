@@ -63,17 +63,20 @@ def a65602str(addr):
 def dump_6560(prefix, from2, to2, a2, b1, b2, c1, c2,
               tag, payload, error, pktcount, first):
     print("%sSMA INNER PROTOCOL PACKET" % prefix)
-    print("%s    A2:    %02X" % (prefix, a2))
-    print("%s    FROM:  %s" % (prefix, a65602str(from2)))
-    print("%s    B1:    %02X" % (prefix, b1))
-    print("%s    B2:    %02X" % (prefix, b2))
-    print("%s    TO:    %s" % (prefix, a65602str(to2)))
-    print("%s    C1:    %02X" % (prefix, c1))
-    print("%s    C2:    %02X" % (prefix, c2))
-    print("%s    ERROR: %d" % (prefix, error))
-    print("%s    PKTS:  %d%s" % (prefix, pktcount, (not first) or " [FIRST]"))
-    print("%s    TAG:   0x%04x" % (prefix, tag))
-    print("%s    TO:    %s" % (prefix, a65602str(to2)))
+    print("%s    %s => %s" % (prefix, a65602str(from2), a65602str(to2)))
+    print("%s    control %02X %02X %02X %02X %02X"
+          % (prefix, a2, b1, b2, c1, c2))
+    if error:
+        print("%s    ERROR!! code 0x%4x" % (prefix, error))
+    s = []
+    if first:
+        s.append('first')
+    if pktcount:
+        s.append('%d packets left' % pktcount)
+    else:
+        s.append('last')
+    s = ', '.join(s)
+    print("%s    tag %04x (%s)" % (prefix, tag, s))
     print(hexdump(payload, prefix + "    "))
 
 class BTSMAConnectionCLI(BTSMAConnection):
