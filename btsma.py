@@ -4,6 +4,9 @@ from __future__ import print_function
 from __future__ import division
 
 import sys
+import getopt
+import time
+
 import bluetooth
 import readline
 
@@ -375,9 +378,6 @@ class BTSMAConnection(object):
                             0x200, 0x5400, 0x00260100, 0x002601ff)
 
     def tx_historic(self, fromtime, totime):
-        payload = bytearray('\x00\x02\x00\x70')
-        payload += int2bytes32(fromtime)
-        payload += int2bytes32(totime)
         return self.tx_6560(self.local_addr2, self.BROADCAST2,
                             0xe0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
                             0x200, 0x7000, fromtime, totime)
@@ -399,13 +399,45 @@ class BTSMAConnection(object):
         return self.wait('outer', wfn)
 
     def wait_6560(self, wtag):
-        def tagfn(from2, to2, a2, b1, b2, c1, c2, tag, payload,
-                  error, pktcount, first):
-            if tag == wtag:
+        def tagfn(from2, to2, a2, b1, b2, c1, c2, tag,
+                  type_, subtype, arg1, arg2, extra,
+                  response, error, pktcount, first):
+            if response and (tag == wtag):
                 if (pktcount != 0) or not first:
-                    raise BTSMAError("FIXME: Handle multi packet replies")
-                return (from2, to2, a2, b1, b2, c1, c2, payload)
+                    raise BTSMAError("Unexpected multipacket reply")
+                if error:
+                    raise BTSMAError("SMA device returned error 0x%x\n", error)
+                return (from2, type_, subtype, arg1, arg2, extra)
         return self.wait('6560', tagfn)
+
+    def wait_6560_multi(self, wtag):
+        tmplist = []
+
+        def multiwait_6560(from2, to2, a2, b1, b2, c1, c2, tag,
+                           type_, subtype, arg1, arg2, extra,
+                           response, error, pktcount, first):
+            if not response or (tag != wtag):
+                return None
+
+            if not tmplist:
+                if not first:
+                    raise BTSMAError("Didn't see first packet of reply")
+
+                tmplist.append(pktcount + 1) # Expected number of packets
+            else:
+                expected = tmplist[0]
+                sofar = len(tmplist) - 1
+                if pktcount != (expected - sofar - 1):
+                    raise BTSMAError("Got packet index %d instead of %d"
+                                     % (pktcount, expected - sofar))
+
+            tmplist.append((from2, type_, subtype, arg1, arg2, extra))
+            if pktcount == 0:
+                return True
+
+        self.wait('6560', multiwait_6560)
+        assert(len(tmplist) == (tmplist[0] + 1))
+        return tmplist[1:]
 
     # Operations
 
@@ -433,6 +465,105 @@ class BTSMAConnection(object):
                      type_, subtype, arg1, arg2, payload)
         return self.wait_6560(tag)
 
-    def logon(self, password='0000'):
-        tag = self.tx_logon(password)
+    def logon(self, password='0000', timeout=900):
+        tag = self.tx_logon(password, timeout)
         self.wait_6560(tag)
+
+    def total_yield(self):
+        tag = self.tx_yield()
+        from2, type_, subtype, arg1, arg2, extra = self.wait_6560(tag)
+        timestamp = bytes2int(extra[4:8])
+        total = bytes2int(extra[8:12])
+        return timestamp, total
+
+    def daily_yield(self):
+        tag = self.tx_gdy()
+        from2, type_, subtype, arg1, arg2, extra = self.wait_6560(tag)
+        timestamp = bytes2int(extra[4:8])
+        daily = bytes2int(extra[8:12])
+        return timestamp, daily
+
+    def historic(self, fromtime, totime):
+        tag = self.tx_historic(fromtime, totime)
+        data = self.wait_6560_multi(tag)
+        points = []
+        for from2, type_, subtype, arg1, arg2, extra in data:
+            while extra:
+                timestamp = bytes2int(extra[0:4])
+                val = bytes2int(extra[4:8])
+                extra = extra[12:]
+                points.append((timestamp, val))
+        return points
+
+
+def ftime(timestamp):
+    st = time.localtime(timestamp)
+    return time.strftime("%a, %d %b %Y %H:%M:%S %Z", st)
+
+
+def ptime(str):
+    return int(time.mktime(time.strptime(str, "%Y-%m-%d")))
+
+
+def cmd_total(sma, args):
+    if len(args) != 1:
+        print("Command usage: total")
+        sys.exit(1)
+
+    timestamp, total = sma.total_yield()
+    print("%s: Total generation to-date %d Wh" % (ftime(timestamp), total))
+
+
+def cmd_daily(sma, args):
+    if len(args) != 1:
+        print("Command usage: daily")
+        sys.exit(1)
+
+    timestamp, daily = sma.daily_yield()
+    print("%s: Daily generation %d Wh" % (ftime(timestamp), daily))
+
+
+def cmd_historic(sma, args):
+    fromtime = ptime("2013-01-01")
+    totime = int(time.time()) # Now
+    if len(args) > 1:
+        fromtime = ptime(args[1])
+    if len(args) > 2:
+        totime = ptime(args[2])
+    if len(args) > 3:
+        print("Command usage: historic [start-date [end-date]]")
+        sys.exit(1)
+
+    hlist = sma.historic(fromtime, totime)
+    for timestamp, val in hlist:
+        print("%s: Total generation %d Wh" % (ftime(timestamp), val))
+
+
+if __name__ == '__main__':
+    bdaddr = None
+
+    optlist, args = getopt.getopt(sys.argv[1:], 'b:')
+
+    if not args:
+        print("Usage: btsma.py -b <bdaddr> command args..")
+        sys.exit(1)
+
+    cmd = 'cmd_' + args[0]
+    if cmd not in globals():
+        print("Invalid command '%s'" % args[0])
+        sys.exit(1)
+    cmdfn = globals()[cmd]
+
+    for opt, optarg in optlist:
+        if opt == '-b':
+            bdaddr = optarg
+
+    if bdaddr is None:
+        print("No bluetooth address specified")
+        sys.exit(1)
+
+    sma = BTSMAConnection(bdaddr)
+
+    sma.hello()
+    sma.logon(timeout = 60)
+    cmdfn(sma, args)
