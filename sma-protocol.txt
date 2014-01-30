@@ -166,4 +166,8 @@ Offset		Value
 20..21		packet count for multi packet response
 22..23		LE16, low 15 bits are tag value
 		MSB is "first packet" flag for multi packet response??
-24		LSB is command/response flag??
+24..25		Packet type
+		LSB is command/response flag
+26..27		Packet subtype
+28..31		Arg 1 (LE)
+32..35		Arg 2 (LE)

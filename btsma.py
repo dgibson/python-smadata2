@@ -25,7 +25,7 @@ OTYPE_PPP2 = 0x08
 
 OVAR_SIGNAL = 0x05
 
-INNER_HLEN = 24
+INNER_HLEN = 36
 
 SMA_PROTOCOL_ID = 0x6560
 
@@ -253,17 +253,25 @@ class BTSMAConnection(object):
             tag = bytes2int(payload[22:24])
             first = bool(tag & 0x8000)
             tag = tag & 0x7fff
-            spl = payload[24:]
-            self.rx_6560(from2, to2, a2, b1, b2, c1, c2, tag, spl,
-                         error, pktcount, first)
+            type_ = bytes2int(payload[24:26])
+            response = bool(type_ & 1)
+            type_ = type_ & ~1
+            subtype = bytes2int(payload[26:28])
+            arg1 = bytes2int(payload[28:32])
+            arg2 = bytes2int(payload[32:36])
+            extra = payload[36:]
+            self.rx_6560(from2, to2, a2, b1, b2, c1, c2, tag,
+                         type_, subtype, arg1, arg2, extra,
+                         response, error, pktcount, first)
 
     def rxfilter_6560(self, to2):
         return ((to2 == self.local_addr2)
                 or (to2 == self.BROADCAST2))
 
     @waiter
-    def rx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag, payload,
-                error, pktcount, first):
+    def rx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag,
+                type_, subtype, arg1, arg2, extra,
+                response, error, pktcount, first):
         if not self.rxfilter_6560(to2):
             return
 
@@ -307,30 +315,41 @@ class BTSMAConnection(object):
 
         self.tx_outer(self.local_addr, to_, OTYPE_PPP, rawpayload)
 
-    def tx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag, payload,
-                error=0, pktcount=0, first=True):
-        if len(payload) % 4 != 0:
+    def tx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag,
+                type_, subtype, arg1, arg2, extra = bytearray(),
+                response=False, error=0, pktcount=0, first=True):
+        if len(extra) % 4 != 0:
             raise BTSMAError("Inner protocol payloads must have multiple of 4 bytes length")
-        innerlen = (len(payload) + INNER_HLEN) // 4
-        ppppayload = bytearray()
-        ppppayload.append(innerlen)
-        ppppayload.append(a2)
-        ppppayload.extend(to2)
-        ppppayload.append(b1)
-        ppppayload.append(b2)
-        ppppayload.extend(from2)
-        ppppayload.append(c1)
-        ppppayload.append(c2)
-        ppppayload.extend(int2bytes16(error))
-        ppppayload.extend(int2bytes16(pktcount))
+        innerlen = (len(extra) + INNER_HLEN) // 4
+        payload = bytearray()
+        payload.append(innerlen)
+        payload.append(a2)
+        payload.extend(to2)
+        payload.append(b1)
+        payload.append(b2)
+        payload.extend(from2)
+        payload.append(c1)
+        payload.append(c2)
+        payload.extend(int2bytes16(error))
+        payload.extend(int2bytes16(pktcount))
         if first:
             xtag = tag | 0x8000
         else:
             xtag = tag
-        ppppayload.extend(int2bytes16(xtag))
-        ppppayload.extend(payload)
+        payload.extend(int2bytes16(xtag))
+        if type_ & 0x1:
+            raise ValueError
+        if response:
+            xtype = type_ | 1
+        else:
+            xtype = type_
+        payload.extend(int2bytes16(xtype))
+        payload.extend(int2bytes16(subtype))
+        payload.extend(int2bytes32(arg1))
+        payload.extend(int2bytes32(arg2))
+        payload.extend(extra)
 
-        self.tx_ppp("ff:ff:ff:ff:ff:ff", SMA_PROTOCOL_ID, ppppayload)
+        self.tx_ppp("ff:ff:ff:ff:ff:ff", SMA_PROTOCOL_ID, payload)
         return tag
 
     def tx_logon(self, password='0000', timeout = 900):
@@ -339,23 +358,21 @@ class BTSMAConnection(object):
         password += '\x00' * (12 - len(password))
         tag = self.gettag()
 
-        payload = bytearray('\x0c\x04\xfd\xff\x07\x00\x00\x00')
-        payload += int2bytes32(timeout)
-        payload += int2bytes32(0xbbbbaaaa) # timestamp?
-        payload += bytearray('\x00\x00\x00\x00')
-        payload += bytearray(((ord(c) + 0x88) % 0xff) for c in password)
+        extra = bytearray('\xaa\xaa\xbb\xbb\x00\x00\x00\x00')
+        extra += bytearray(((ord(c) + 0x88) % 0xff) for c in password)
         return self.tx_6560(self.local_addr2, self.BROADCAST2, 0xa0,
-                            0x00, 0x01, 0x00, 0x01, tag, payload)
+                            0x00, 0x01, 0x00, 0x01, tag,
+                            0x040c, 0xfffd, 7, timeout, extra)
 
     def tx_gdy(self):
         return self.tx_6560(self.local_addr2, self.BROADCAST2,
                             0xa0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
-                            bytearray('\x00\x02\x00\x54\x00\x22\x26\x00\xff\x22\x26\x00'))
+                            0x200, 0x5400, 0x00262200, 0x002622ff)
 
     def tx_yield(self):
         return self.tx_6560(self.local_addr2, self.BROADCAST2,
                             0xa0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
-                            bytearray('\x00\x02\x00\x54\x00\x01\x26\x00\xff\x01\x26\x00'))
+                            0x200, 0x5400, 0x00260100, 0x002601ff)
 
     def tx_historic(self, fromtime, totime):
         payload = bytearray('\x00\x02\x00\x70')
@@ -363,7 +380,7 @@ class BTSMAConnection(object):
         payload += int2bytes32(totime)
         return self.tx_6560(self.local_addr2, self.BROADCAST2,
                             0xe0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
-                            payload)
+                            0x200, 0x7000, fromtime, totime)
 
     def wait(self, class_, cond=None):
         self.waitvar = None
@@ -410,9 +427,10 @@ class BTSMAConnection(object):
         val = self.getvar(OVAR_SIGNAL)
         return val[2] / 0xff
 
-    def do_6560(self, a2, b1, b2, c1, c2, tag, payload):
-        self.tx_6560(self.local_addr2, self.BROADCAST2, a2, b1, b2, c1, c2,
-                     tag, payload)
+    def do_6560(self, a2, b1, b2, c1, c2, tag, type_, subtype, arg1, arg2,
+                payload = bytearray()):
+        self.tx_6560(self.local_addr2, self.BROADCAST2, a2, b1, b2, c1, c2, tag,
+                     type_, subtype, arg1, arg2, payload)
         return self.wait_6560(tag)
 
     def logon(self, password='0000'):

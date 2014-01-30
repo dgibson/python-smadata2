@@ -60,14 +60,15 @@ def dump_ppp(prefix, protocol, payload):
 def a65602str(addr):
     return "%02X.%02X.%02X.%02X.%02X.%02X" % tuple(addr)
 
-def dump_6560(prefix, from2, to2, a2, b1, b2, c1, c2,
-              tag, payload, error, pktcount, first):
+def dump_6560(prefix, from2, to2, a2, b1, b2, c1, c2, tag,
+              type_, subtype, arg1, arg2, extra,
+              response, error, pktcount, first):
     print("%sSMA INNER PROTOCOL PACKET" % prefix)
     print("%s    %s => %s" % (prefix, a65602str(from2), a65602str(to2)))
     print("%s    control %02X %02X %02X %02X %02X"
           % (prefix, a2, b1, b2, c1, c2))
     if error:
-        print("%s    ERROR!! code 0x%4x" % (prefix, error))
+        print("%s    ERROR!! code 0x%04x" % (prefix, error))
     s = []
     if first:
         s.append('first')
@@ -77,7 +78,12 @@ def dump_6560(prefix, from2, to2, a2, b1, b2, c1, c2,
         s.append('last')
     s = ', '.join(s)
     print("%s    tag %04x (%s)" % (prefix, tag, s))
-    print(hexdump(payload, prefix + "    "))
+    if response:
+        cr = "response"
+    else:
+        cr = "command"
+    print("%s    %s 0x%04x subtype 0x%04x" % (prefix, cr, type_, subtype))
+    print(hexdump(extra, prefix + "    "))
 
 class BTSMAConnectionCLI(BTSMAConnection):
     def __init__(self, addr):
@@ -124,13 +130,16 @@ class BTSMAConnectionCLI(BTSMAConnection):
         dump_ppp("Rx<         ", protocol, payload)
         super(BTSMAConnectionCLI, self).rx_ppp(from_, protocol, payload)
 
-    def rx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag, payload,
-                error, pktcount, first):
-        dump_6560("Rx<             ", from2, to2, a2, b1, b2, c1, c2,
-                  tag, payload, error, pktcount, first)
-        super(BTSMAConnectionCLI, self).rx_6560(from2, to2, a2, b1, b2,
-                                                c1, c2, tag, payload,
-                                                error, pktcount, first)
+    def rx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag,
+                type_, subtype, arg1, arg2, extra,
+                response, error, pktcount, first):
+        dump_6560("Rx<             ", from2, to2, a2, b1, b2, c1, c2, tag,
+                  type_, subtype, arg1, arg2, extra,
+                  response, error, pktcount, first)
+        super(BTSMAConnectionCLI, self).rx_6560(from2, to2, a2, b1, b2, c1, c2,
+                                                tag, type_, subtype, arg1, arg2,
+                                                extra, response, error, pktcount,
+                                                first)
 
     def tx_raw(self, pkt):
         super(BTSMAConnectionCLI, self).tx_raw(pkt)
@@ -148,13 +157,15 @@ class BTSMAConnectionCLI(BTSMAConnection):
         super(BTSMAConnectionCLI, self).tx_ppp(to_, protocol, payload)
         dump_ppp("Tx>         ", protocol, payload)
 
-    def tx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag, payload,
-                error=0, pktcount=0, first=True):
-        super(BTSMAConnectionCLI, self).tx_6560(from2, to2, a2, b1, b2,
-                                                c1, c2, tag, payload,
-                                                error, pktcount, first)
-        dump_6560("Tx>             ", from2, to2, a2, b1, b2, c1, c2,
-                  tag, payload, error, pktcount, first)
+    def tx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag,
+                type_, subtype, arg1, arg2, extra=bytearray(),
+                response=False, error=0, pktcount=0, first=True):
+        super(BTSMAConnectionCLI, self).tx_6560(from2, to2, a2, b1, b2, c1, c2, tag,
+                                                type_, subtype, arg1, arg2, extra,
+                                                response, error, pktcount, first)
+        dump_6560("Tx>             ", from2, to2, a2, b1, b2, c1, c2, tag,
+                  type_, subtype, arg1, arg2, extra,
+                  response, error, pktcount, first)
 
     def cli(self):
         while True:
@@ -216,14 +227,17 @@ class BTSMAConnectionCLI(BTSMAConnection):
         self.tx_ppp("ff:ff:ff:ff:ff:ff", protocol, payload)
 
     def cmd_send2(self, *args):
-        bb = bytearray([int(x, 16) for x in args])
+        bi = [int(x, 16) for x in args]
         a2 = bb[0]
         b1, b2 = bb[1], bb[2]
         c1, c2 = bb[3], bb[4]
-        payload = bb[5:]
+        type_, subtype = bb[5], bb[6]
+        arg1, arg2 = bb[7], bb[8]
+        extra = bytearray(bb[9:])
 
         self.tx_6560(self.local_addr2, self.BROADCAST2,
-                     a2, b1, b2, c1, c2, self.gettag(), payload)
+                     a2, b1, b2, c1, c2, self.gettag(),
+                     type_, subtype, arg1, arg2, extra)
 
     def cmd_logon(self, password='0000', timeout=900):
         timeout = int(timeout)
@@ -246,28 +260,11 @@ class BTSMAConnectionCLI(BTSMAConnection):
 
     def cmd_cmd31(self):
         self.tx_6560(self.local_addr2, self.BROADCAST2, 0xa0, 0x00, 0x00,
-                     0x00, 0x00, self.gettag(),
-                     bytearray('\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'))
+                     0x00, 0x00, self.gettag(), 0x0200, 0x0000, 0, 0)
 
     def cmd_cmd32(self):
         self.tx_6560(self.local_addr2, self.BROADCAST2, 0xa0, 0x00, 0x03,
-                     0x00, 0x00, 0,
-                     bytearray('\x0e\x01\xfd\xff\xff\xff\xff\xff'))
-
-    def cmd_cmd57(self):
-        self.tx_6560(self.local_addr2, self.BROADCAST2, 0xa0, 0x00, 0x00,
-                     0x00, 0x00, self.gettag(),
-                     bytearray('\x00\x80\x00\x02\x80\x51\x00\x48\x21\x00\xFF\x48\x21\x00'))
-
-    def cmd_cmd60(self):
-        self.tx_6560(self.local_addr2, self.BROADCAST2, 0xa1, 0x00, 0x00,
-                     0x00, 0x00, self.gettag(),
-                     bytearray('\x00\x02\x00\x51\x00\x00\x20\x00\xff\xff\x50\x00\x0e'))
-
-    def cmd_cmd82(self):
-        self.tx_6560(self.local_addr2, self.BROADCAST2, 0xE0, 0x00, 0x00,
-                     0x00, 0x00, self.gettag(),
-                     bytearray('\x00\x02\x00\x70\x00\x27\x0e\x50\x80\x5a\xc3\x52'))
+                     0x00, 0x00, 0, 0x10e, 0xfffd, 0xffffffff, None) #hrm..
 
 
 if __name__ == '__main__':
