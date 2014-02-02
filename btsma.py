@@ -15,7 +15,8 @@ __all__ = ['BTSMAConnection', 'BTSMAError',
            'OTYPE_HELLO', 'OTYPE_GETVAR',
            'OTYPE_VARVAL', 'OTYPE_ERROR',
            'OVAR_SIGNAL',
-           'int2bytes16', 'int2bytes32', 'bytes2int']
+           'int2bytes16', 'int2bytes32', 'bytes2int',
+           'format_time']
 
 OUTER_HLEN = 18
 
@@ -496,7 +497,7 @@ class BTSMAConnection(object):
         return points
 
 
-def ftime(timestamp):
+def format_time(timestamp):
     st = time.localtime(timestamp)
     return time.strftime("%a, %d %b %Y %H:%M:%S %Z", st)
 
@@ -511,7 +512,7 @@ def cmd_total(sma, args):
         sys.exit(1)
 
     timestamp, total = sma.total_yield()
-    print("%s: Total generation to-date %d Wh" % (ftime(timestamp), total))
+    print("%s: Total generation to-date %d Wh" % (format_time(timestamp), total))
 
 
 def cmd_daily(sma, args):
@@ -520,7 +521,7 @@ def cmd_daily(sma, args):
         sys.exit(1)
 
     timestamp, daily = sma.daily_yield()
-    print("%s: Daily generation %d Wh" % (ftime(timestamp), daily))
+    print("%s: Daily generation %d Wh" % (format_time(timestamp), daily))
 
 
 def cmd_historic(sma, args):
@@ -536,7 +537,7 @@ def cmd_historic(sma, args):
 
     hlist = sma.historic(fromtime, totime)
     for timestamp, val in hlist:
-        print("%s: Total generation %d Wh" % (ftime(timestamp), val))
+        print("%s: Total generation %d Wh" % (format_time(timestamp), val))
 
 
 if __name__ == '__main__':

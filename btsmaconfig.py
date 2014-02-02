@@ -5,6 +5,8 @@ from __future__ import print_function
 import os
 import ConfigParser
 
+import btsma
+
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.btsmarc")
 
 
@@ -12,6 +14,16 @@ class BTSMAInverter(object):
     def __init__(self, name, bdaddr):
         self.name = name
         self.bdaddr = bdaddr
+
+    def connect(self):
+        return btsma.BTSMAConnection(self.bdaddr)
+
+
+    def connect_and_logon(self):
+        conn = self.connect()
+        conn.hello()
+        conn.logon()
+        return conn
 
 
 def read_config(configfile=DEFAULT_CONFIG_FILE):
