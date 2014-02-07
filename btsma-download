@@ -1,0 +1,38 @@
+#! /usr/bin/env python
+
+import time
+
+import btsma
+import btsmaconfig
+import btsmadb
+
+config = btsmaconfig.BTSMAConfig()
+db = btsmadb.BTSMADatabaseSQLiteV0(config.dbname)
+
+for inv in config.inverters():
+    print("%s (SN: %d)" % (inv.name, inv.serial))
+
+    lasttime = db.get_last_historic(inv.serial)
+    if lasttime is None:
+        lasttime = inv.starttime
+
+    now = int(time.time())
+
+    print("Retrieving data from %s to %s"
+          % (btsma.format_time(lasttime), btsma.format_time(now)))
+
+    sma = inv.connect_and_logon()
+
+    data = sma.historic(lasttime+1, now)
+    if len(data):
+        print("Downloaded %d observations from %s to %s"
+              % (len(data), btsma.format_time(data[0][0]), btsma.format_time(data[-1][0])))
+    else:
+        print("No new data")
+
+    for timestamp, total in data:
+        if total == 0xffffffff:
+            continue
+        db.add_historic(inv.serial, timestamp, total)
+
+    db.commit()

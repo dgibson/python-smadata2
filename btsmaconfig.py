@@ -3,17 +3,25 @@
 from __future__ import print_function
 
 import os
+import time
+import calendar
+import dateutil.parser
 import ConfigParser
 
 import btsma
 
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.btsmarc")
 
+def parse_time(s):
+    dt = dateutil.parser.parse(s)
+    return int(time.mktime(dt.timetuple()))
 
 class BTSMAInverter(object):
-    def __init__(self, name, bdaddr):
+    def __init__(self, name, bdaddr, serial, starttime):
         self.name = name
         self.bdaddr = bdaddr
+        self.serial = serial
+        self.starttime = starttime
 
     def connect(self):
         return btsma.BTSMAConnection(self.bdaddr)
@@ -26,21 +34,38 @@ class BTSMAInverter(object):
         return conn
 
 
-def read_config(configfile=DEFAULT_CONFIG_FILE):
-    config = ConfigParser.SafeConfigParser()
-    config.read(configfile)
+DEFAULT_START_TIME = "2010-01-01"
 
-    invs = []
+class BTSMAConfig(object):
+    def __init__(self, configfile=DEFAULT_CONFIG_FILE):
+        config = ConfigParser.SafeConfigParser(
+            {'start_time': DEFAULT_START_TIME}
+        )
+        config.read(configfile)
 
-    for s in config.sections():
-        addr = config.get(s, 'bluetooth')
-        inv = BTSMAInverter(s, addr)
-        invs.append(inv)
+        self.invs = []
 
-    return invs
+        if config.has_option('DATABASE', 'filename'):
+            self.dbname = os.path.expanduser(config.get('DATABASE', 'filename'))
+        else:
+            self.dbname = os.path.expanduser("~/.btsmadb.v0.sqlite")
+
+        for s in config.sections():
+            if s == 'DATABASE':
+                continue
+
+            addr = config.get(s, 'bluetooth')
+            serial = config.getint(s, 'serial')
+            starttime = parse_time(config.get(s, 'start_time'))
+            inv = BTSMAInverter(s, addr, serial, starttime)
+            self.invs.append(inv)
+
+    def inverters(self):
+        return self.invs
+
 
 if __name__ == '__main__':
-    invs = read_config()
-    for inv in invs:
+    config = BTSMAConfig()
+    for inv in config.inverters():
         print("%s:" % inv.name)
         print("\tBluetooth address: %s" % inv.bdaddr)
