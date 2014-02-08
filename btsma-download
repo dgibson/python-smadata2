@@ -3,6 +3,7 @@
 import time
 
 import btsma
+import btsmautil
 import btsmaconfig
 import btsmadb
 
@@ -19,14 +20,15 @@ for inv in config.inverters():
     now = int(time.time())
 
     print("Retrieving data from %s to %s"
-          % (btsma.format_time(lasttime), btsma.format_time(now)))
+          % (btsmautil.format_time(lasttime), btsmautil.format_time(now)))
 
     sma = inv.connect_and_logon()
 
     data = sma.historic(lasttime+1, now)
     if len(data):
         print("Downloaded %d observations from %s to %s"
-              % (len(data), btsma.format_time(data[0][0]), btsma.format_time(data[-1][0])))
+              % (len(data), btsmautil.format_time(data[0][0]),
+                 btsmautil.format_time(data[-1][0])))
     else:
         print("No new data")
 

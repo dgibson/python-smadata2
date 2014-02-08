@@ -12,8 +12,8 @@ for inv in inverters:
 
     dtime, daily = sma.daily_yield()
     print("\tDaily generation at %s:\t%d Wh"
-          % (btsma.format_time(dtime), daily))
+          % (btsmautil.format_time(dtime), daily))
 
     ttime, total = sma.total_yield()
     print("\tTotal generation at %s:\t%d Wh"
-          % (btsma.format_time(ttime), total))
+          % (btsmautil.format_time(ttime), total))

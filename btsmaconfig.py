@@ -12,10 +12,6 @@ import btsma
 
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.btsmarc")
 
-def parse_time(s):
-    dt = dateutil.parser.parse(s)
-    return int(time.mktime(dt.timetuple()))
-
 class BTSMAInverter(object):
     def __init__(self, name, bdaddr, serial, starttime):
         self.name = name
@@ -56,7 +52,7 @@ class BTSMAConfig(object):
 
             addr = config.get(s, 'bluetooth')
             serial = config.getint(s, 'serial')
-            starttime = parse_time(config.get(s, 'start_time'))
+            starttime = btsmautil.parse_time(config.get(s, 'start_time'))
             inv = BTSMAInverter(s, addr, serial, starttime)
             self.invs.append(inv)
 

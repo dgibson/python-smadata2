@@ -50,6 +50,15 @@ class BTSMADatabaseSQLiteV0(BTSMADatabase):
         r = c.fetchone()
         return r[0]
 
+    def get_one_historic(self, serial, timestamp):
+        c = self.conn.cursor()
+        c.execute("SELECT total_yield FROM generation"
+                  " WHERE inverter_serial = ?"
+                  " AND timestamp = ?", (serial, timestamp))
+        r = c.fetchone()
+        if r is not None:
+            return r[0]
+
     def add_historic(self, serial, timestamp, total_yield):
         c = self.conn.cursor()
         c.execute("INSERT INTO generation"
