@@ -8,11 +8,12 @@ import calendar
 import dateutil.parser
 import ConfigParser
 
-import btsma
+import smadata2.protocol
+import smadata2.util
 
-DEFAULT_CONFIG_FILE = os.path.expanduser("~/.btsmarc")
+DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2rc")
 
-class BTSMAInverter(object):
+class SMAData2InverterConfig(object):
     def __init__(self, name, bdaddr, serial, starttime):
         self.name = name
         self.bdaddr = bdaddr
@@ -20,7 +21,7 @@ class BTSMAInverter(object):
         self.starttime = starttime
 
     def connect(self):
-        return btsma.BTSMAConnection(self.bdaddr)
+        return smadata2.protocol.SMAData2BluetoothConnection(self.bdaddr)
 
 
     def connect_and_logon(self):
@@ -32,7 +33,7 @@ class BTSMAInverter(object):
 
 DEFAULT_START_TIME = "2010-01-01"
 
-class BTSMAConfig(object):
+class SMAData2Config(object):
     def __init__(self, configfile=DEFAULT_CONFIG_FILE):
         config = ConfigParser.SafeConfigParser(
             {'start_time': DEFAULT_START_TIME}
@@ -52,8 +53,8 @@ class BTSMAConfig(object):
 
             addr = config.get(s, 'bluetooth')
             serial = config.getint(s, 'serial')
-            starttime = btsmautil.parse_time(config.get(s, 'start_time'))
-            inv = BTSMAInverter(s, addr, serial, starttime)
+            starttime = smadata2.util.parse_time(config.get(s, 'start_time'))
+            inv = SMAData2InverterConfig(s, addr, serial, starttime)
             self.invs.append(inv)
 
     def inverters(self):
@@ -61,7 +62,7 @@ class BTSMAConfig(object):
 
 
 if __name__ == '__main__':
-    config = BTSMAConfig()
+    config = SMAData2Config()
     for inv in config.inverters():
         print("%s:" % inv.name)
         print("\tBluetooth address: %s" % inv.bdaddr)

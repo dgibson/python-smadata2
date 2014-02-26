@@ -2,13 +2,13 @@
 
 import time
 
-import btsma
-import btsmautil
-import btsmaconfig
-import btsmadb
+import smadata2.protocol
+import smadata2.util
+import smadata2.config
+import smadata2.db
 
-config = btsmaconfig.BTSMAConfig()
-db = btsmadb.BTSMADatabaseSQLiteV0(config.dbname)
+config = smadata2.config.SMAData2Config()
+db = smadata2.db.SMADatabaseSQLiteV0(config.dbname)
 
 for inv in config.inverters():
     print("%s (SN: %d)" % (inv.name, inv.serial))
@@ -20,15 +20,15 @@ for inv in config.inverters():
     now = int(time.time())
 
     print("Retrieving data from %s to %s"
-          % (btsmautil.format_time(lasttime), btsmautil.format_time(now)))
+          % (smadata2.util.format_time(lasttime), smadata2.util.format_time(now)))
 
     sma = inv.connect_and_logon()
 
     data = sma.historic(lasttime+1, now)
     if len(data):
         print("Downloaded %d observations from %s to %s"
-              % (len(data), btsmautil.format_time(data[0][0]),
-                 btsmautil.format_time(data[-1][0])))
+              % (len(data), smadata2.util.format_time(data[0][0]),
+                 smadata2.util.format_time(data[-1][0])))
     else:
         print("No new data")
 

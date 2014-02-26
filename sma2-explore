@@ -7,7 +7,8 @@ import os
 import signal
 import readline
 import time
-from btsma import *
+
+from smadata2.protocol import *
 
 
 class Quit(Exception):

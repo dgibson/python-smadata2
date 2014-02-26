@@ -6,18 +6,18 @@ import sys
 import time
 import sqlite3
 
-class BTSMADatabaseError(Exception):
+class Error(Exception):
     pass
 
 
-class BTSMADatabase(object):
+class SMADatabase(object):
     def __init__(self, *args):
         self.conn = self.connect(*args)
 
         magic, version = self.get_magic()
         if (magic != self.DB_MAGIC) or (version != self.DB_VERSION):
-            raise BTSMADatabaseError("Incorrect database version (0x%x, %d)"
-                                     % (magic, version))
+            raise Error("Incorrect database version (0x%x, %d)"
+                        % (magic, version))
 
     def connect(self):
         raise NotImplementedError
@@ -26,7 +26,7 @@ class BTSMADatabase(object):
         raise NotImplementedError
 
 
-class BTSMADatabaseSQLiteV0(BTSMADatabase):
+class SMADatabaseSQLiteV0(SMADatabase):
     DB_MAGIC = 0x71534d41
     DB_VERSION = 0
 
@@ -40,7 +40,7 @@ class BTSMADatabaseSQLiteV0(BTSMADatabase):
         magic, version = r[0], r[1]
         if c.fetchone() is not None:
             if c.fetchone() is not None:
-                raise BTSMADatabaseError("Bad version table")
+                raise Error("Bad version table")
         return magic, version
 
     def get_last_historic(self, serial):
@@ -71,4 +71,4 @@ class BTSMADatabaseSQLiteV0(BTSMADatabase):
         
 
 if __name__ == '__main__':
-    db = BTSMADatabaseSQLiteV0(sys.argv[1])
+    db = SMADatabaseSQLiteV0(sys.argv[1])

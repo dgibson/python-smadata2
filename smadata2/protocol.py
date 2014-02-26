@@ -10,9 +10,10 @@ import time
 import bluetooth
 import readline
 
-__all__ = ['BTSMAConnection', 'BTSMAError',
-           'OTYPE_PPP', 'OTYPE_PPP2',
-           'OTYPE_HELLO', 'OTYPE_GETVAR',
+from util import format_time
+
+__all__ = ['SMAData2BluetoothConnection', 'Error',
+           'OTYPE_PPP', 'OTYPE_PPP2', 'OTYPE_HELLO', 'OTYPE_GETVAR',
            'OTYPE_VARVAL', 'OTYPE_ERROR',
            'OVAR_SIGNAL',
            'int2bytes16', 'int2bytes32', 'bytes2int']
@@ -32,7 +33,7 @@ INNER_HLEN = 36
 
 SMA_PROTOCOL_ID = 0x6560
 
-class BTSMAError(Exception):
+class Error(Exception):
     pass
 
 
@@ -53,11 +54,11 @@ def _check_header(hdr):
         raise ValueError()
 
     if hdr[0] != 0x7e:
-        raise BTSMAError("Missing packet start marker")
+        raise Error("Missing packet start marker")
     if (hdr[1] > 0x70) or (hdr[2] != 0):
-        raise BTSMAError("Bad packet length")
+        raise Error("Bad packet length")
     if hdr[3] != (hdr[0] ^ hdr[1] ^ hdr[2]):
-        raise BTSMAError("Bad header check byte")
+        raise Error("Bad header check byte")
     return hdr[1]
 
 
@@ -134,7 +135,7 @@ def crc16(iv, data):
     return crc ^ 0xffff
 
 
-class BTSMAConnection(object):
+class SMAData2BluetoothConnection(object):
     MAXBUFFER = 512
     BROADCAST = "ff:ff:ff:ff:ff:ff"
     BROADCAST2 = bytearray('\xff\xff\xff\xff\xff\xff')
@@ -213,7 +214,7 @@ class BTSMAConnection(object):
 
         assert raw[-1] == 0x7e
         if raw[0] != 0x7e:
-            raise BTSMAError("Missing flag byte on PPP packet")
+            raise Error("Missing flag byte on PPP packet")
 
         raw = raw[1:-1]
         frame = bytearray()
@@ -225,12 +226,12 @@ class BTSMAConnection(object):
                 frame.append(b)
 
         if (frame[0] != 0xff) or (frame[1] != 0x03):
-            raise BTSMAError("Bad header on PPP frame")
+            raise Error("Bad header on PPP frame")
 
         pcrc = bytes2int(frame[-2:])
         ccrc = crc16(0xffff, frame[:-2])
         if pcrc != ccrc:
-            raise BTSMAError("Bad CRC on PPP frame")
+            raise Error("Bad CRC on PPP frame")
 
         protocol = bytes2int(frame[2:4])
         
@@ -241,9 +242,9 @@ class BTSMAConnection(object):
         if protocol == SMA_PROTOCOL_ID:
             innerlen = payload[0]
             if len(payload) != (innerlen * 4):
-                raise BTSMAError("Inner length field (0x%02x = %d bytes)" +
-                                 " does not match actual length (%d bytes)"
-                                 % (innerlen, innerlen * 4, len(payload)))
+                raise Error("Inner length field (0x%02x = %d bytes)" +
+                            " does not match actual length (%d bytes)"
+                            % (innerlen, innerlen * 4, len(payload)))
             a2 = payload[1]
             to2 = payload[2:8]
             b1 = payload[8]
@@ -322,7 +323,7 @@ class BTSMAConnection(object):
                 type_, subtype, arg1, arg2, extra = bytearray(),
                 response=False, error=0, pktcount=0, first=True):
         if len(extra) % 4 != 0:
-            raise BTSMAError("Inner protocol payloads must have multiple of 4 bytes length")
+            raise Error("Inner protocol payloads must have multiple of 4 bytes length")
         innerlen = (len(extra) + INNER_HLEN) // 4
         payload = bytearray()
         payload.append(innerlen)
@@ -404,9 +405,9 @@ class BTSMAConnection(object):
                   response, error, pktcount, first):
             if response and (tag == wtag):
                 if (pktcount != 0) or not first:
-                    raise BTSMAError("Unexpected multipacket reply")
+                    raise Error("Unexpected multipacket reply")
                 if error:
-                    raise BTSMAError("SMA device returned error 0x%x\n", error)
+                    raise Error("SMA device returned error 0x%x\n", error)
                 return (from2, type_, subtype, arg1, arg2, extra)
         return self.wait('6560', tagfn)
 
@@ -421,15 +422,15 @@ class BTSMAConnection(object):
 
             if not tmplist:
                 if not first:
-                    raise BTSMAError("Didn't see first packet of reply")
+                    raise Error("Didn't see first packet of reply")
 
                 tmplist.append(pktcount + 1) # Expected number of packets
             else:
                 expected = tmplist[0]
                 sofar = len(tmplist) - 1
                 if pktcount != (expected - sofar - 1):
-                    raise BTSMAError("Got packet index %d instead of %d"
-                                     % (pktcount, expected - sofar))
+                    raise Error("Got packet index %d instead of %d"
+                                % (pktcount, expected - sofar))
 
             tmplist.append((from2, type_, subtype, arg1, arg2, extra))
             if pktcount == 0:
@@ -444,7 +445,7 @@ class BTSMAConnection(object):
     def hello(self):
         hellopkt = self.wait_outer(OTYPE_HELLO)
         if hellopkt != bytearray('\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00'):
-            raise BTSMAError("Unexpected HELLO %r" % hellopkt)
+            raise Error("Unexpected HELLO %r" % hellopkt)
         self.tx_outer("00:00:00:00:00:00", self.remote_addr,
                       OTYPE_HELLO, hellopkt)
         self.wait_outer(0x05)
@@ -507,7 +508,7 @@ def cmd_total(sma, args):
 
     timestamp, total = sma.total_yield()
     print("%s: Total generation to-date %d Wh"
-          % (btsmautil.format_time(timestamp), total))
+          % (format_time(timestamp), total))
 
 
 def cmd_daily(sma, args):
@@ -517,7 +518,7 @@ def cmd_daily(sma, args):
 
     timestamp, daily = sma.daily_yield()
     print("%s: Daily generation %d Wh"
-          % (btsmautil.format_time(timestamp), daily))
+          % (format_time(timestamp), daily))
 
 
 def cmd_historic(sma, args):
@@ -534,7 +535,7 @@ def cmd_historic(sma, args):
     hlist = sma.historic(fromtime, totime)
     for timestamp, val in hlist:
         print("%s: Total generation %d Wh"
-              % (btsmautil.format_time(timestamp), val))
+              % (format_time(timestamp), val))
 
 
 if __name__ == '__main__':
@@ -543,7 +544,7 @@ if __name__ == '__main__':
     optlist, args = getopt.getopt(sys.argv[1:], 'b:')
 
     if not args:
-        print("Usage: btsma.py -b <bdaddr> command args..")
+        print("Usage: %s -b <bdaddr> command args.." % sys.argv[0])
         sys.exit(1)
 
     cmd = 'cmd_' + args[0]
@@ -560,7 +561,7 @@ if __name__ == '__main__':
         print("No bluetooth address specified")
         sys.exit(1)
 
-    sma = BTSMAConnection(bdaddr)
+    sma = SMAData2BluetoothConnection(bdaddr)
 
     sma.hello()
     sma.logon(timeout = 60)
