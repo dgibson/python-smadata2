@@ -1,0 +1,6 @@
+[DATABASE]
+filename = ~/.btsmadb.v0.sqlite
+
+[My Inverter]
+bluetooth = 00:80:25:xx:yy:zz
+serial = 2130012345
