@@ -276,14 +276,6 @@ class BTSMAConnectionCLI(BTSMAConnection):
             totime = int(totime)
         self.tx_historic(fromtime, totime)
 
-    def cmd_cmd31(self):
-        self.tx_6560(self.local_addr2, self.BROADCAST2, 0xa0, 0x00, 0x00,
-                     0x00, 0x00, self.gettag(), 0x0200, 0x0000, 0, 0)
-
-    def cmd_cmd32(self):
-        self.tx_6560(self.local_addr2, self.BROADCAST2, 0xa0, 0x00, 0x03,
-                     0x00, 0x00, 0, 0x10e, 0xfffd, 0xffffffff, None) #hrm..
-
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
