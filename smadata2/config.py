@@ -31,11 +31,12 @@ import smadata2.util
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2rc")
 
 class SMAData2InverterConfig(object):
-    def __init__(self, name, bdaddr, serial, starttime):
+    def __init__(self, name, bdaddr, serial, starttime, pvoutput_sid):
         self.name = name
         self.bdaddr = bdaddr
         self.serial = serial
         self.starttime = starttime
+        self.pvoutput_sid = pvoutput_sid
 
     def connect(self):
         return smadata2.protocol.SMAData2BluetoothConnection(self.bdaddr)
@@ -64,14 +65,22 @@ class SMAData2Config(object):
         else:
             self.dbname = os.path.expanduser("~/.btsmadb.v0.sqlite")
 
+        if config.has_option('pvoutput.org', 'config'):
+            self.pvoutput_config_filepath = os.path.expanduser(config.get('pvoutput.org', 'config'))
+        else:
+            self.pvoutput_config_filepath = os.path.expanduser("~/.pvoutput.org.rc")
+
         for s in config.sections():
             if s == 'DATABASE':
+                continue
+            if s == 'pvoutput.org':
                 continue
 
             addr = config.get(s, 'bluetooth')
             serial = config.getint(s, 'serial')
+            pvoutput_sid = config.get(s, 'pvoutput-sid')
             starttime = smadata2.util.parse_time(config.get(s, 'start_time'))
-            inv = SMAData2InverterConfig(s, addr, serial, starttime)
+            inv = SMAData2InverterConfig(s, addr, serial, starttime,pvoutput_sid)
             self.invs.append(inv)
 
     def inverters(self):

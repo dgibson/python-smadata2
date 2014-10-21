@@ -1,0 +1,79 @@
+#! /usr/bin/env python
+#
+# sma2-upload-to-pvoutputorg - Download historic generation info from SMA inverters
+# Copyright (C) 2014 Peter Barker <pb-smadata2@barker.dropbear.id.au>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+import time
+
+import smadata2.protocol
+import smadata2.util
+import smadata2.config
+import smadata2.db
+
+import smadata2.pvoutputorg
+import time;
+
+def upload_unuploaded_statuses(mypvoutput,db,inv):
+    hwm = db.pvoutput_get_hwm(inv.serial)
+    if hwm is None:
+        db.pvoutput_init_hwm(inv.serial,0)
+        hwm = db.pvoutput_get_hwm(inv.serial)
+
+    print("hwm=" + str(hwm))
+
+    last_total_production = -1 # unlikely...
+    for i in db.get_entries_younger_than(inv.serial,hwm):
+        timestamp = i[0]
+        total_production = i[1]
+        print("t=" + str(timestamp) + " (" + time.strftime("%Y-%m-%d %H:%M",time.localtime(timestamp)) + ")")
+        print("p=" + str(total_production))
+
+         # 14 day limit on API - only try to upload the last 13 days of data:
+        if ((time.time() - timestamp) > (13*24*60*60 - 600)):
+                print("Skipping too-old datapoint @" + str(timestamp));
+                continue
+
+        # uploading datapoints with the same production as previously
+        # is time-cosuming and pointless..
+        if (total_production == last_total_production):
+                print("Skipping this datapoint - same production as previous")
+                continue
+        
+
+        mypvoutput.addstatus(inv.pvoutput_sid,timestamp,total_production)
+        db.pvoutput_set_hwm(inv.serial,timestamp)
+        last_total_production = total_production
+
+        # API limit... FIXME; no need to pause after last...
+        time.sleep(61);
+
+
+    # last = db.get_entry(inv.serial)
+    # timestamp = last[0]
+    # total_production = last[1]
+    # mypvoutput.addstatus(inv.pvoutput_sid,timestamp,total_production)
+
+
+config = smadata2.config.SMAData2Config()
+db = smadata2.db.SMADatabaseSQLiteV0(config.dbname)
+
+pvoutput_config_filepath = config.pvoutput_config_filepath
+mypvoutput = smadata2.pvoutputorg.PVOutputOrg(pvoutput_config_filepath)
+
+for inv in config.inverters():
+    print("%s (SN: %d)" % (inv.name, inv.serial))
+    upload_unuploaded_statuses(mypvoutput,db,inv)

@@ -60,12 +60,78 @@ class SMADatabaseSQLiteV0(SMADatabase):
                 raise Error("Bad version table")
         return magic, version
 
+    def get_last_entry(self, serial):
+        c = self.conn.cursor()
+        c.execute("SELECT timestamp,total_yield "
+                  "FROM generation "
+                  "WHERE inverter_serial = ? "
+                  "ORDER BY timestamp DESC LIMIT 1", (serial,))
+        r = c.fetchone()
+        return r
+
+    def get_last_entries(self, serial, count):
+        c = self.conn.cursor()
+        c.execute("SELECT timestamp,total_yield "
+                  "FROM generation "
+                  "WHERE inverter_serial = ? "
+                  "ORDER BY timestamp DESC LIMIT ?"(serial,str(count)))
+        r = c.fetchall()
+        return r
+
+    def get_entries_younger_than(self, serial, timestamp):
+        c = self.conn.cursor()
+        c.execute("SELECT timestamp,total_yield "
+                  "FROM generation "
+                  "WHERE inverter_serial = ? AND "
+                  " timestamp > ? "
+                  "ORDER BY timestamp ASC",(serial,str(timestamp)))
+        r = c.fetchall()
+        return r
+
     def get_last_historic(self, serial):
         c = self.conn.cursor()
         c.execute("SELECT max(timestamp) FROM generation"
                   " WHERE inverter_serial = ?", (serial,))
         r = c.fetchone()
         return r[0]
+
+    def pvoutput_get_hwm(self, serial):
+        c = self.conn.cursor()
+        c.execute("SELECT hwm "
+                  "FROM pvoutput "
+                  "WHERE inverter_serial = ?", (serial,))
+        r = c.fetchone()
+        if r is None:
+            return None
+        return r[0]
+
+    def pvoutput_maybe_init(self, serial):
+        c = self.conn.cursor()
+        c.execute("SELECT * FROM pvoutput"
+                  " WHERE inverter_serial = ?",
+                  (serial,))
+        r = c.fetchone()
+        if r is None:
+            c = self.conn.cursor()
+            c.execute("INSERT INTO pvoutput(inverter_serial) "
+                      "VALUES ( ? )",
+                      (serial,))
+            self.commit()
+
+    def pvoutput_init_hwm(self, serial, value):
+        c = self.conn.cursor()
+        self.pvoutput_maybe_init(serial);
+        c.execute("update pvoutput "
+                  "SET hwm = ?"
+                  "WHERE inverter_serial = ?", (value,serial,))
+        self.commit()
+
+    def pvoutput_set_hwm(self, serial, new_hwm):
+        c = self.conn.cursor()
+        c.execute("UPDATE pvoutput "
+                  "SET hwm = ?"
+                  "WHERE inverter_serial = ?", (new_hwm,serial,))
+        self.commit()
 
     def get_one_historic(self, serial, timestamp):
         c = self.conn.cursor()
