@@ -63,3 +63,6 @@ class PVOutputOrg(object):
         responsecode = filehandle.getcode()
         if (responsecode != 200):
             raise Error("Bad HTTP response code (" + str(responsecode) + ") from " + hostnameport)
+
+    def addbatchstatus(self,sid,timestamp,total_production):
+        print ("addstatus")

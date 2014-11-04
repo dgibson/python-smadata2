@@ -61,6 +61,52 @@ def upload_unuploaded_statuses(mypvoutput,db,inv):
         # API limit... FIXME; no need to pause after last...
         time.sleep(61);
 
+def sendbatch(inv,batch):
+        mypvoutput.addstatusbatch(inv.pvoutput_sid,timestamp,total_production)
+        db.pvoutput_set_hwm(inv.serial,timestamp)
+
+batch_length_max = 30
+
+def upload_unuploaded_statuses_batch(mypvoutput,db,inv):
+    hwm = db.pvoutput_get_hwm(inv.serial)
+    if hwm is None:
+        db.pvoutput_init_hwm(inv.serial,0)
+        hwm = db.pvoutput_get_hwm(inv.serial)
+
+    print("hwm=" + str(hwm))
+
+    batch = [];
+    last_total_production = -1 # unlikely...
+    for i in db.get_entries_younger_than(inv.serial,hwm):
+        timestamp = i[0]
+        total_production = i[1]
+        print("t=" + str(timestamp) + " (" + time.strftime("%Y-%m-%d %H:%M",time.localtime(timestamp)) + ")")
+        print("p=" + str(total_production))
+
+         # 14 day limit on API - only try to upload the last 13 days of data:
+        if ((time.time() - timestamp) > (13*24*60*60 - 600)):
+                print("Skipping too-old datapoint @" + str(timestamp));
+                continue
+
+        # uploading datapoints with the same production as previously
+        # is time-cosuming and pointless..
+        if (total_production == last_total_production):
+                print("Skipping this datapoint - same production as previous")
+                continue
+        
+        batch.append([timestamp,production])
+                
+        last_total_production = total_production
+
+        if len(batch) == batch_length_max:
+            sendbatch(inv,batch);
+            # API limit... FIXME; no need to pause after last...
+            time.sleep(61);
+
+        batch = []
+
+    if (len(batch) > 0):
+            sendbatch(inv,batch)
 
     # last = db.get_entry(inv.serial)
     # timestamp = last[0]
