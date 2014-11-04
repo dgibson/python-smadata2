@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 #
 # sma2-upload-to-pvoutputorg - Download historic generation info from SMA inverters
-# Copyright (C) 2014 Peter Barker <pb-smadata2@barker.dropbear.id.au>
+# Copyright (C) 2014 Peter Barker <pb-sma2@barker.dropbear.id.au>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,101 +25,333 @@ import smadata2.config
 import smadata2.db
 
 import smadata2.pvoutputorg
-import time;
+import time
+import datetime
+import re
+import string
 
-def upload_unuploaded_statuses(mypvoutput,db,inv):
-    hwm = db.pvoutput_get_hwm(inv.serial)
-    if hwm is None:
-        db.pvoutput_init_hwm(inv.serial,0)
+class SMA2UploadInverterDataToPVOutputOrg(object):
+    def __init__(self,db,inv,pvoutput):
+        self.print_verbose = 1
+        self.db = db
+        self.pvoutput = pvoutput
+        self.inv = inv
+
+    ## send a batch of datapoints to the server
+    # @param batch a two-dimension array [[ timestamp,totalprod ], ...]
+    def sendbatch(self,batch):
+        self.pvoutput.addbatchstatus(inv.pvoutput_sid,batch)
+
+    ## returns maximum datapoints the API will accept in a batch
+    # @return an integer with the maximum batch length the API will accept
+    def batch_length_max(self):
+        return 30
+
+    ## send entries to server
+    # @param entries entries to send [[ timestamp,totalprod ], ...]
+    # @fixme sanity checking for too-old-dates should be made by callers
+    # @fixme move this batching into pvoutput
+    def send_entries(self,entries):
+        batch = [];
+        last_total_production = -1 # unlikely...
+
+        too_old_in_days = self.pvoutput.days_ago_accepted_by_api()
+
+        havesent = 0;
+        timeout = 20
+        for i in entries:
+            timestamp = i[0]
+            total_production = i[1]
+    #        print("t=" + str(timestamp) + " (" + time.strftime("%Y-%m-%d %H:%M",time.localtime(timestamp)) + ")")
+    #        print("p=" + str(total_production))
+
+            # 14 day limit on API - only try to upload the last 13 days of data:
+            if ((time.time() - timestamp) > (too_old_in_days*24*60*60 - 600)):
+                    print("Skipping too-old datapoint @" + str(timestamp));
+                    continue
+
+            batch.append([timestamp,total_production])
+
+            last_total_production = total_production
+
+            if len(batch) == self.batch_length_max():
+                if (havesent):
+                    # if we do *not* wait, other requests can get served
+                    # first.  The API wants stuff *in order*!  Sucks.
+                    print "sleeping %d" % (timeout)
+                    time.sleep(timeout)
+                else:
+                    havesent = 1
+                self.sendbatch(batch);
+                batch = []
+
+        if (len(batch) > 0):
+                if (havesent):
+                    print "sleeping before sending final batch"
+                    time.sleep(timeout)
+                self.sendbatch(batch)
+
+    ## filter out entries that we shouldn't upload to pvoutput.org
+    # @param hwm the last high-water-mark datapoint [timestamp,generation] sent to server
+    # @param statuses the list of statuses to trim
+    # @return trimmed status list
+    # @note each day needs a baseline-no-production-yet datapoint
+    # @fixme change this to screw with statuses in-place instead
+    def trim_unwanted_unuploaded_statuses(self,hwm,statuses):
+        skipping = 0
+        last = hwm
+        ret = []
+        while (len(statuses)):
+            this = statuses.pop(0)
+            if skipping:
+                if len(statuses):
+                    next = statuses[0];
+                    if this[1] == next[1]:
+                        pass # keep skipping
+                    else:
+                        skipping = 0
+                        ret.append(this)
+                else:
+                    return ret
+            else: # not skipping
+                if last[1] == this[1]:
+                    skipping = 1
+                else:
+                    ret.append(this)
+            last = this
+        return ret
+
+
+    ## upload statuses that we do not believe are present on the server
+    def upload_unuploaded_statuses_batch(self):
         hwm = db.pvoutput_get_hwm(inv.serial)
+        if hwm is None:
+            db.pvoutput_init_hwm(inv.serial,0)
+            hwm = db.pvoutput_get_hwm(inv.serial)
 
-    print("hwm=" + str(hwm))
+        print "hwm=%d" % (hwm[0])
+        entries = db.get_entries_younger_than(inv.serial,hwm)
+        new_entries = self.trim_unwanted_unuploaded_statuses(hwm,entries)
+        entries = new_entries
+        if len(entries):
+            self.send_entries(entries)
+            new_hwm = entries[-1]
+            new_hwm_timestamp = new_hwm[0]
+            print("new hwm=" + str(new_hwm_timestamp))
+            db.pvoutput_set_hwm(inv.serial,new_hwm_timestamp)
+        else:
+            print "No un-uploaded entries"
 
-    last_total_production = -1 # unlikely...
-    for i in db.get_entries_younger_than(inv.serial,hwm):
-        timestamp = i[0]
-        total_production = i[1]
-        print("t=" + str(timestamp) + " (" + time.strftime("%Y-%m-%d %H:%M",time.localtime(timestamp)) + ")")
-        print("p=" + str(total_production))
+    ## trim entries off outputs for a single day that are pointless to upload
+    # @param statuses to trim
+    # @note statuses are trimmed in place
+    # @note each day needs a baseline-no-production-yet datapoint
+    def trim_unwanted_daily_statuses(self,statuses):
+        while len(statuses): # trim statuses off the front
+            if len(statuses) > 1:
+                if statuses[0][1] == statuses[1][1]:
+                    # the next data point is the same as the first datapoint:
+                    statuses.pop(0);
+                else:
+                    break
+            else:
+                break
+        while len(statuses): # trim statuses off the front
+            if len(statuses) > 1:
+                if statuses[-1][1] == statuses[-2][1]:
+                    # the last datapoint is the same as the second-from-last datapoint;
+                    statuses.pop();
+                else:
+                    break
+            else:
+                break
 
-         # 14 day limit on API - only try to upload the last 13 days of data:
-        if ((time.time() - timestamp) > (13*24*60*60 - 600)):
-                print("Skipping too-old datapoint @" + str(timestamp));
+    ## upload statuses for a specific day
+    # @param day day to upload for
+    def upload_statuses_for_day(self,day):
+        entries = db.get_entries_for_day(inv.serial,day)
+        # remove any entries which do not add information:
+        self.trim_unwanted_daily_statuses(entries)
+        self.send_entries(entries)
+
+    ## print out a message only if we're verbose
+    def verbose(self,message):
+        if (self.print_verbose):
+            print message
+
+    ## check that the db entries are accurately relflected on pvoutput.org for date
+    # @param date a datetime object - midnight, please
+    # @fixme take a... you know... date instead of a datetime?
+    def reconcile_date(self,date):
+
+        mydata = db.get_entries_for_day(inv.serial,date)
+
+        # for prod in mydata:
+        #     timestamp = prod[0]
+        #     cumulative = prod[1]
+        #     print "timestamp=%s cumulative=%s" % (timestamp,cumulative)
+
+        theirdata = self.pvoutput.getstatus(inv.pvoutput_sid,date,None,None)
+    #    for output in theirdata:
+    #        print "date=%s time=%s production=%s" % (output[0],output[1],output[2])
+
+
+        my_last_delta = None
+
+        first_production = None
+        while 1:
+            if len(mydata) == 0:
+                break;
+            if len(theirdata) == 0:
+                break;
+            mine = mydata[0]
+            my_timestamp = mine[0]
+            my_production = mine[1]
+
+            if first_production is None:
+                first_production = my_production
+
+    #        print "my_timestamp=%d my_production=%d" % (my_timestamp,my_production)
+            my_delta = mine[1] - first_production
+
+            my_last_delta = my_delta
+
+            theirs = theirdata[0]
+            their_date = theirs[0]
+            their_time = theirs[1]
+            their_delta = theirs[2]
+            their_timestamp = time.mktime(self.pvoutput.parse_date_and_time(their_date,their_time).timetuple())
+    #        print "their_timestamp=%d their_delta=%d" % (their_timestamp,their_delta)
+            if their_timestamp > my_timestamp:
+                mydata.pop(0);
+                if (my_delta != 0):
+    #                fred = datetime.datetime.utcfromtimestamp(my_timestamp)
+                    x = time.strftime("%Y-%m-%d %H:%M",time.localtime(my_timestamp))
+                    print("Extra datapoint from me: %s (%s) %s") % (my_timestamp,x,my_delta)
+            else:
+                if (their_timestamp < my_timestamp):
+                    print("Extra datapoint from them: %s %s %s") % (their_date,their_time,their_delta)
+                    theirdata.pop(0)
+                else:
+                    if their_delta != my_delta:
+                        print "production mismatch (timestamp=%d) (them=%d us=%d)" % (my_timestamp,their_delta,my_delta)
+                    else:
+                        self.verbose("ALL GOOD (them=%d us=%d) (them=%d us=%d)" % (their_timestamp,my_timestamp,their_delta,my_delta))
+                    theirdata.pop(0)
+                    mydata.pop(0)
+
+        if len(theirdata):
+                print("There are %d on pvoutput.org which aren't in our data" % (len(theirdata)))
+                for output in theirdata:
+                    self.verbose("their extra: date=%s time=%s production=%s" % (output[0],output[1],output[2]))
+
+        printed_mydata_warning_once = 0
+        if len(mydata):
+                for mine in mydata:
+                    my_delta = mine[1] - first_production
+                    if my_delta != my_last_delta: # zeroes at end of day
+                        if not printed_mydata_warning_once:
+                            print("There are %d extra readings in my database which are not on pvoutput.org" % (len(mydata)))
+                            printed_mydata_warning_once = 1
+                        self.verbose("my extra: timestamp=%s cumulative=%s" % (mine[0],my_delta))
+
+    ## reconcile all data in my database against what is on pvoutput.org
+    def reconcile(self):
+        dates = db.midnights(inv.serial)
+        now = datetime.datetime.now()
+        for date in dates:
+            if (date.date() == now.date()):
+                # FIXME: API limit; can not get historical information for today
                 continue
+            if (now - date < datetime.timedelta(days=self.pvoutput.days_ago_accepted_by_api())):
+                print "date: %s"  % (date,)
+                self.reconcile_date(date)
 
-        # uploading datapoints with the same production as previously
-        # is time-cosuming and pointless..
-        if (total_production == last_total_production):
-                print("Skipping this datapoint - same production as previous")
-                continue
-        
+    ## simply pull out data for inspection for a particular date/time
+    # @param pvstyle_date e.g. "20141231"
+    # @param pvstyle_time e.g. "12:30"
+    def show_production_for_datapoint(self,pvstyle_date,pvstyle_time):
+        datetime = self.pvoutput.parse_date_and_time(pvstyle_date,pvstyle_time);
+        timestamp = time.mktime(datetime.timetuple())
+        datapoint = db.get_entry(inv.serial,timestamp)
+        if datapoint is None:
+            print "No such datapoint"
+            return
+        print "Production for (%s): %d" % (pvstyle_time, datapoint[1])
 
-        mypvoutput.addstatus(inv.pvoutput_sid,timestamp,total_production)
-        db.pvoutput_set_hwm(inv.serial,timestamp)
-        last_total_production = total_production
+    ## dodgy entry point to fix data already on server.
+    # @param date date to work with in pvoutput format e.g. "20140731"
+    # @param fix whether to attempt to fix the problem or not
+    def do_date(self,date,fix):
+        if fix:
+            print " delete data for a specific date (%s)" % date
+            day = self.pvoutput.parse_date_and_time(date,"00:00");
+            self.pvoutput.deletestatus(inv.pvoutput_sid,day)
 
-        # API limit... FIXME; no need to pause after last...
-        time.sleep(61);
+        if fix:
+            print " upload data for a specific date (%s)" % date
+            day = self.pvoutput.parse_date_and_time(date,"00:00");
+            self.upload_statuses_for_day(day)
+            sleep(20) # so the reconcile works....
 
-def sendbatch(inv,batch):
-        mypvoutput.addstatusbatch(inv.pvoutput_sid,timestamp,total_production)
-        db.pvoutput_set_hwm(inv.serial,timestamp)
-
-batch_length_max = 30
-
-def upload_unuploaded_statuses_batch(mypvoutput,db,inv):
-    hwm = db.pvoutput_get_hwm(inv.serial)
-    if hwm is None:
-        db.pvoutput_init_hwm(inv.serial,0)
-        hwm = db.pvoutput_get_hwm(inv.serial)
-
-    print("hwm=" + str(hwm))
-
-    batch = [];
-    last_total_production = -1 # unlikely...
-    for i in db.get_entries_younger_than(inv.serial,hwm):
-        timestamp = i[0]
-        total_production = i[1]
-        print("t=" + str(timestamp) + " (" + time.strftime("%Y-%m-%d %H:%M",time.localtime(timestamp)) + ")")
-        print("p=" + str(total_production))
-
-         # 14 day limit on API - only try to upload the last 13 days of data:
-        if ((time.time() - timestamp) > (13*24*60*60 - 600)):
-                print("Skipping too-old datapoint @" + str(timestamp));
-                continue
-
-        # uploading datapoints with the same production as previously
-        # is time-cosuming and pointless..
-        if (total_production == last_total_production):
-                print("Skipping this datapoint - same production as previous")
-                continue
-        
-        batch.append([timestamp,production])
-                
-        last_total_production = total_production
-
-        if len(batch) == batch_length_max:
-            sendbatch(inv,batch);
-            # API limit... FIXME; no need to pause after last...
-            time.sleep(61);
-
-        batch = []
-
-    if (len(batch) > 0):
-            sendbatch(inv,batch)
-
-    # last = db.get_entry(inv.serial)
-    # timestamp = last[0]
-    # total_production = last[1]
-    # mypvoutput.addstatus(inv.pvoutput_sid,timestamp,total_production)
+        if 1:
+            print "reconciling specific date (%s)" % date
+            somedate = self.pvoutput.parse_date_and_time(date,'00:00');
+            self.reconcile_date(somedate)
 
 
 config = smadata2.config.SMAData2Config()
+
 db = smadata2.db.SMADatabaseSQLiteV0(config.dbname)
 
 pvoutput_config_filepath = config.pvoutput_config_filepath
+
 mypvoutput = smadata2.pvoutputorg.PVOutputOrg(pvoutput_config_filepath)
 
-for inv in config.inverters():
-    print("%s (SN: %d)" % (inv.name, inv.serial))
-    upload_unuploaded_statuses(mypvoutput,db,inv)
+if 1:
+    for inv in config.inverters():
+        print("%s (SN: %d)" % (inv.name, inv.serial))
+        uploader = SMA2UploadInverterDataToPVOutputOrg(db,inv,mypvoutput)
+        uploader.upload_unuploaded_statuses_batch()
+
+exit(0)
+
+# stuff below this line is useful for fixing data on the server - and
+# working out what needs fixing....
+
+if 0:
+    for inv in config.inverters():
+        print("%s (SN: %d)" % (inv.name, inv.serial))
+        uploader = SMA2UploadInverterDataToPVOutputOrg(db,inv,mypvoutput)
+        uploader.show_production_for_datapoint("20141029","19:15")
+        uploader.show_production_for_datapoint("20141029","19:20")
+        uploader.show_production_for_datapoint("20141029","19:25")
+        uploader.show_production_for_datapoint("20141029","19:30")
+        uploader.show_production_for_datapoint("20141030","06:30")
+        uploader.show_production_for_datapoint("20141030","06:35")
+        uploader.show_production_for_datapoint("20141030","06:40")
+    exit(0)
+
+if 0:
+    for inv in config.inverters():
+        print("%s (SN: %d)" % (inv.name, inv.serial))
+        uploader = SMA2UploadInverterDataToPVOutputOrg(db,inv,mypvoutput)
+        somedate = mypvoutput.parse_date_and_time('20141031','00:00');
+        uploader.reconcile_date(somedate)
+    exit(0)
+
+if 0:
+    for inv in config.inverters():
+        print("%s (SN: %d)" % (inv.name, inv.serial))
+        uploader = SMA2UploadInverterDataToPVOutputOrg(db,inv,mypvoutput)
+        uploader.reconcile()
+    exit(0)
+
+if 0:
+    date = "20141104"
+    fix = 1
+
+    for inv in config.inverters():
+        uploader = SMA2UploadInverterDataToPVOutputOrg(db,inv,mypvoutput)
+        uploader.do_date(date,fix)
+    exit(0)
