@@ -18,3 +18,5 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 # Nothing to see here
+
+from __future__ import print_function

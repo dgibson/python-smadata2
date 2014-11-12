@@ -17,6 +17,8 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+from __future__ import print_function
+
 import urllib
 import urllib2
 import time
@@ -97,7 +99,7 @@ class PVOutputOrg(object):
 
         productiondata = ';'.join(','.join(x) for x in new)
 
-        print "productiondata=" + productiondata
+        print("productiondata=" + productiondata)
         data = urllib.urlencode({
             "data": productiondata,
             "c1": 1
@@ -105,7 +107,7 @@ class PVOutputOrg(object):
         filehandle = self.make_request(sid, "/service/r2/addbatchstatus.jsp",
                                        data)
         content = filehandle.read()
-        print "Content returned from server: %s" % (content)
+        print("Content returned from server: %s" % content)
 
     # delete a day's status
     # @param sid a pvoutput system id
