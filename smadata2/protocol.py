@@ -50,6 +50,7 @@ INNER_HLEN = 36
 
 SMA_PROTOCOL_ID = 0x6560
 
+
 class Error(Exception):
     pass
 
@@ -81,7 +82,7 @@ def _check_header(hdr):
 
 def ba2str(addr):
     if len(addr) != 6:
-        raise ValueError("Bad length for bluetooth address");
+        raise ValueError("Bad length for bluetooth address")
     assert len(addr) == 6
     return "%02X:%02X:%02X:%02X:%02X:%02X" % tuple(reversed(addr))
 
@@ -90,9 +91,9 @@ def str2ba(s):
     addr = [int(x, 16) for x in s.split(':')]
     addr.reverse()
     if len(addr) != 6:
-        raise ValueError("Bad length for bluetooth address");
+        raise ValueError("Bad length for bluetooth address")
     return bytearray(addr)
-    
+
 
 def int2bytes16(v):
     return bytearray([v & 0xff, v >> 8])
@@ -207,7 +208,7 @@ class SMAData2BluetoothConnection(object):
         return ((to_ == self.local_addr)
                 or (to_ == self.BROADCAST)
                 or (to_ == "00:00:00:00:00:00"))
-        
+
     @waiter
     def rx_outer(self, from_, to_, type_, payload):
         if not self.rxfilter_outer(to_):
@@ -251,7 +252,7 @@ class SMAData2BluetoothConnection(object):
             raise Error("Bad CRC on PPP frame")
 
         protocol = bytes2int(frame[2:4])
-        
+
         self.rx_ppp(from_, protocol, frame[4:-2])
 
     @waiter
@@ -337,10 +338,11 @@ class SMAData2BluetoothConnection(object):
         self.tx_outer(self.local_addr, to_, OTYPE_PPP, rawpayload)
 
     def tx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag,
-                type_, subtype, arg1, arg2, extra = bytearray(),
+                type_, subtype, arg1, arg2, extra=bytearray(),
                 response=False, error=0, pktcount=0, first=True):
         if len(extra) % 4 != 0:
-            raise Error("Inner protocol payloads must have multiple of 4 bytes length")
+            raise Error("Inner protocol payloads must"
+                        + "have multiple of 4 bytes length")
         innerlen = (len(extra) + INNER_HLEN) // 4
         payload = bytearray()
         payload.append(innerlen)
@@ -373,7 +375,7 @@ class SMAData2BluetoothConnection(object):
         self.tx_ppp("ff:ff:ff:ff:ff:ff", SMA_PROTOCOL_ID, payload)
         return tag
 
-    def tx_logon(self, password='0000', timeout = 900):
+    def tx_logon(self, password='0000', timeout=900):
         if len(password) > 12:
             raise ValueError
         password += '\x00' * (12 - len(password))
@@ -412,7 +414,7 @@ class SMAData2BluetoothConnection(object):
     def wait_outer(self, wtype, wpl=bytearray()):
         def wfn(from_, to_, type_, payload):
             if ((type_ == wtype)
-                and payload.startswith(wpl)):
+                    and payload.startswith(wpl)):
                 return payload
         return self.wait('outer', wfn)
 
@@ -441,7 +443,7 @@ class SMAData2BluetoothConnection(object):
                 if not first:
                     raise Error("Didn't see first packet of reply")
 
-                tmplist.append(pktcount + 1) # Expected number of packets
+                tmplist.append(pktcount + 1)  # Expected number of packets
             else:
                 expected = tmplist[0]
                 sofar = len(tmplist) - 1
@@ -461,7 +463,8 @@ class SMAData2BluetoothConnection(object):
 
     def hello(self):
         hellopkt = self.wait_outer(OTYPE_HELLO)
-        if hellopkt != bytearray('\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00'):
+        if hellopkt != bytearray('\x00\x04\x70\x00\x01\x00\x00\x00'
+                                 + '\x00\x01\x00\x00\x00'):
             raise Error("Unexpected HELLO %r" % hellopkt)
         self.tx_outer("00:00:00:00:00:00", self.remote_addr,
                       OTYPE_HELLO, hellopkt)
@@ -478,9 +481,9 @@ class SMAData2BluetoothConnection(object):
         return val[2] / 0xff
 
     def do_6560(self, a2, b1, b2, c1, c2, tag, type_, subtype, arg1, arg2,
-                payload = bytearray()):
-        self.tx_6560(self.local_addr2, self.BROADCAST2, a2, b1, b2, c1, c2, tag,
-                     type_, subtype, arg1, arg2, payload)
+                payload=bytearray()):
+        self.tx_6560(self.local_addr2, self.BROADCAST2, a2, b1, b2, c1, c2,
+                     tag, type_, subtype, arg1, arg2, payload)
         return self.wait_6560(tag)
 
     def logon(self, password='0000', timeout=900):
@@ -540,7 +543,7 @@ def cmd_daily(sma, args):
 
 def cmd_historic(sma, args):
     fromtime = ptime("2013-01-01")
-    totime = int(time.time()) # Now
+    totime = int(time.time())  # Now
     if len(args) > 1:
         fromtime = ptime(args[1])
     if len(args) > 2:
@@ -581,5 +584,5 @@ if __name__ == '__main__':
     sma = SMAData2BluetoothConnection(bdaddr)
 
     sma.hello()
-    sma.logon(timeout = 60)
+    sma.logon(timeout=60)
     cmdfn(sma, args)

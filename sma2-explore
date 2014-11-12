@@ -70,13 +70,14 @@ def dump_ppp_raw(prefix, payload):
 
 
 def dump_ppp(prefix, protocol, payload):
-    print("%sPPP frame; protocol 0x%04x [%d bytes]" 
+    print("%sPPP frame; protocol 0x%04x [%d bytes]"
           % (prefix, protocol, len(payload)))
     print(hexdump(payload, prefix + "    "))
 
 
 def a65602str(addr):
     return "%02X.%02X.%02X.%02X.%02X.%02X" % tuple(addr)
+
 
 def dump_6560(prefix, from2, to2, a2, b1, b2, c1, c2, tag,
               type_, subtype, arg1, arg2, extra,
@@ -102,6 +103,7 @@ def dump_6560(prefix, from2, to2, a2, b1, b2, c1, c2, tag,
         cr = "command"
     print("%s    %s 0x%04x subtype 0x%04x" % (prefix, cr, type_, subtype))
     print(hexdump(extra, prefix + "    "))
+
 
 class BTSMAConnectionCLI(BTSMAConnection):
     def __init__(self, addr):
@@ -155,9 +157,10 @@ class BTSMAConnectionCLI(BTSMAConnection):
                   type_, subtype, arg1, arg2, extra,
                   response, error, pktcount, first)
         super(BTSMAConnectionCLI, self).rx_6560(from2, to2, a2, b1, b2, c1, c2,
-                                                tag, type_, subtype, arg1, arg2,
-                                                extra, response, error, pktcount,
-                                                first)
+                                                tag, type_, subtype,
+                                                arg1, arg2,
+                                                extra, response, error,
+                                                pktcount, first)
 
     def tx_raw(self, pkt):
         super(BTSMAConnectionCLI, self).tx_raw(pkt)
@@ -178,9 +181,10 @@ class BTSMAConnectionCLI(BTSMAConnection):
     def tx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag,
                 type_, subtype, arg1, arg2, extra=bytearray(),
                 response=False, error=0, pktcount=0, first=True):
-        super(BTSMAConnectionCLI, self).tx_6560(from2, to2, a2, b1, b2, c1, c2, tag,
-                                                type_, subtype, arg1, arg2, extra,
-                                                response, error, pktcount, first)
+        super(BTSMAConnectionCLI, self).tx_6560(from2, to2, a2, b1, b2, c1, c2,
+                                                tag, type_, subtype,
+                                                arg1, arg2, extra, response,
+                                                error, pktcount, first)
         dump_6560("Tx>             ", from2, to2, a2, b1, b2, c1, c2, tag,
                   type_, subtype, arg1, arg2, extra,
                   response, error, pktcount, first)
@@ -208,7 +212,7 @@ class BTSMAConnectionCLI(BTSMAConnection):
         raise Quit()
 
     def cmd_raw(self, *args):
-        pkt = bytearray([int(x,16) for x in args])
+        pkt = bytearray([int(x, 16) for x in args])
         self.tx_raw(pkt)
 
     def parse_addr(self, addr):
@@ -232,7 +236,8 @@ class BTSMAConnectionCLI(BTSMAConnection):
 
     def cmd_hello(self):
         self.tx_outer("00:00:00:00:00:00", self.remote_addr, OTYPE_HELLO,
-                      bytearray('\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00'))
+                      bytearray('\x00\x04\x70\x00\x01\x00\x00\x00'
+                                + '\x00\x01\x00\x00\x00'))
 
     def cmd_getvar(self, varid):
         varid = int(varid, 16)
@@ -269,8 +274,8 @@ class BTSMAConnectionCLI(BTSMAConnection):
 
     def cmd_historic(self, fromtime=None, totime=None):
         if fromtime is None and totime is None:
-            fromtime = 1356958800 # 1 Jan 2013
-            totime = int(time.time()) # now
+            fromtime = 1356958800		# 1 Jan 2013
+            totime = int(time.time())		# now
         else:
             fromtime = int(fromtime)
             totime = int(totime)

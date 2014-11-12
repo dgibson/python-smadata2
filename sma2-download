@@ -37,7 +37,8 @@ for inv in config.inverters():
     now = int(time.time())
 
     print("Retrieving data from %s to %s"
-          % (smadata2.util.format_time(lasttime), smadata2.util.format_time(now)))
+          % (smadata2.util.format_time(lasttime),
+             smadata2.util.format_time(now)))
 
     sma = inv.connect_and_logon()
 

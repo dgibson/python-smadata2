@@ -30,6 +30,7 @@ import smadata2.util
 
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2rc")
 
+
 class SMAData2InverterConfig(object):
     def __init__(self, name, bdaddr, serial, starttime, pvoutput_sid):
         self.name = name
@@ -41,7 +42,6 @@ class SMAData2InverterConfig(object):
     def connect(self):
         return smadata2.protocol.SMAData2BluetoothConnection(self.bdaddr)
 
-
     def connect_and_logon(self):
         conn = self.connect()
         conn.hello()
@@ -50,6 +50,7 @@ class SMAData2InverterConfig(object):
 
 
 DEFAULT_START_TIME = "2010-01-01"
+
 
 class SMAData2Config(object):
     def __init__(self, configfile=DEFAULT_CONFIG_FILE):
@@ -61,14 +62,17 @@ class SMAData2Config(object):
         self.invs = []
 
         if config.has_option('DATABASE', 'filename'):
-            self.dbname = os.path.expanduser(config.get('DATABASE', 'filename'))
+            self.dbname = os.path.expanduser(config.get('DATABASE',
+                                                        'filename'))
         else:
             self.dbname = os.path.expanduser("~/.btsmadb.v0.sqlite")
 
         if config.has_option('pvoutput.org', 'config'):
-            self.pvoutput_config_filepath = os.path.expanduser(config.get('pvoutput.org', 'config'))
+            self.pvoutput_config_filepath = \
+                os.path.expanduser(config.get('pvoutput.org', 'config'))
         else:
-            self.pvoutput_config_filepath = os.path.expanduser("~/.pvoutput.org.rc")
+            self.pvoutput_config_filepath = \
+                os.path.expanduser("~/.pvoutput.org.rc")
 
         for s in config.sections():
             if s == 'DATABASE':
@@ -80,7 +84,8 @@ class SMAData2Config(object):
             serial = config.getint(s, 'serial')
             pvoutput_sid = config.get(s, 'pvoutput-sid')
             starttime = smadata2.util.parse_time(config.get(s, 'start_time'))
-            inv = SMAData2InverterConfig(s, addr, serial, starttime,pvoutput_sid)
+            inv = SMAData2InverterConfig(s, addr, serial,
+                                         starttime, pvoutput_sid)
             self.invs.append(inv)
 
     def inverters(self):
