@@ -32,10 +32,16 @@ class Error(Exception):
 
 
 class PVOutputOrg(object):
-    def __init__(self, pvoutput_config_filepath):
-        self.pvoutput_config_filepath = pvoutput_config_filepath
-        config_file = open(self.pvoutput_config_filepath, "r")
-        self.pvoutput_config = json.load(config_file)
+    def __init__(self, config_filepath):
+        self.config = json.load(open(config_filepath, "r"))
+        self.apikey = self.config["apikey"]
+        self.hostnameport = self.config["hostname"]
+
+        if not apikey:
+            raise Error("No or bad apikey in pvoutput config")
+
+        if not hostnameport:
+            raise Error("No or bad hostname in pvoutput config")
 
     # call a script on the server configured in the config file
     # @fixme currently server includes port number
@@ -44,25 +50,16 @@ class PVOutputOrg(object):
     # @param data content of request
     # @return filehandle-ish thing containing response from server
     def make_request(self, sid, scriptpath, data):
-        apikey = self.pvoutput_config["apikey"]
-        hostnameport = self.pvoutput_config["hostname"]
-
-        url = "http://" + hostnameport + scriptpath
-
-        if not apikey:
-            raise Error("No or bad apikey in pvoutput config")
-
-        if not hostnameport:
-            raise Error("No or bad hostname in pvoutput config")
+        url = "http://" + self.hostnameport + scriptpath
 
         req = urllib2.Request(url=url, data=data)
-        req.add_header("X-Pvoutput-Apikey", apikey)
+        req.add_header("X-Pvoutput-Apikey", self.apikey)
         req.add_header("X-Pvoutput-SystemId", sid)
         filehandle = urllib2.urlopen(req)
         responsecode = filehandle.getcode()
         if responsecode != 200:
             raise Error("Bad HTTP response code (%s) from %s"
-                        % (str(responsecode), hostnameport))
+                        % (str(responsecode), self.hostnameport))
         return filehandle
 
     # add a single data point to the server
