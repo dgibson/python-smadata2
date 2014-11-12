@@ -17,7 +17,7 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-import time
+import sys
 
 import smadata2.protocol
 import smadata2.util
@@ -27,13 +27,11 @@ import smadata2.db
 import smadata2.pvoutputorg
 import time
 import datetime
-import re
-import string
 
 
 class SMA2UploadInverterDataToPVOutputOrg(object):
     def __init__(self, db, inv, pvoutput):
-        self.print_verbose = 1
+        self.print_verbose = True
         self.db = db
         self.pvoutput = pvoutput
         self.inv = inv
@@ -58,7 +56,7 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
 
         too_old_in_days = self.pvoutput.days_ago_accepted_by_api()
 
-        havesent = 0
+        havesent = False
         timeout = 20
         for i in entries:
             timestamp = i[0]
@@ -69,7 +67,7 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
             # print("p=" + str(total_production))
 
             # 14 day limit on API - only upload the last 13 days of data:
-            if ((time.time() - timestamp) > (too_old_in_days*24*60*60 - 600)):
+            if (time.time() - timestamp) > (too_old_in_days*24*60*60 - 600):
                     print("Skipping too-old datapoint @" + str(timestamp))
                     continue
 
@@ -78,18 +76,18 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
             last_total_production = total_production
 
             if len(batch) == self.batch_length_max():
-                if (havesent):
+                if havesent:
                     # if we do *not* wait, other requests can get served
                     # first.  The API wants stuff *in order*!  Sucks.
                     print "sleeping %d" % (timeout)
                     time.sleep(timeout)
                 else:
-                    havesent = 1
+                    havesent = True
                 self.sendbatch(batch)
                 batch = []
 
-        if (len(batch) > 0):
-                if (havesent):
+        if batch:
+                if havesent:
                     print "sleeping before sending final batch"
                     time.sleep(timeout)
                 self.sendbatch(batch)
@@ -101,24 +99,24 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
     # @note each day needs a baseline-no-production-yet datapoint
     # @fixme change this to screw with statuses in-place instead
     def trim_unwanted_unuploaded_statuses(self, hwm, statuses):
-        skipping = 0
+        skipping = False
         last = hwm
         ret = []
-        while (len(statuses)):
+        while statuses:
             this = statuses.pop(0)
             if skipping:
-                if len(statuses):
+                if statuses:
                     next = statuses[0]
                     if this[1] == next[1]:
                         pass		# keep skipping
                     else:
-                        skipping = 0
+                        skipping = False
                         ret.append(this)
                 else:
                     return ret
             else:			# not skipping
                 if last[1] == this[1]:
-                    skipping = 1
+                    skipping = True
                 else:
                     ret.append(this)
             last = this
@@ -135,7 +133,7 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
         entries = db.get_entries_younger_than(inv.serial, hwm)
         new_entries = self.trim_unwanted_unuploaded_statuses(hwm, entries)
         entries = new_entries
-        if len(entries):
+        if entries:
             self.send_entries(entries)
             new_hwm = entries[-1]
             new_hwm_timestamp = new_hwm[0]
@@ -149,7 +147,7 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
     # @note statuses are trimmed in place
     # @note each day needs a baseline-no-production-yet datapoint
     def trim_unwanted_daily_statuses(self, statuses):
-        while len(statuses):		# trim statuses off the front
+        while statuses:		# trim statuses off the front
             if len(statuses) > 1:
                 if statuses[0][1] == statuses[1][1]:
                     # the next data point is the same as the first datapoint:
@@ -158,7 +156,7 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
                     break
             else:
                 break
-        while len(statuses):		# trim statuses off the front
+        while statuses:		# trim statuses off the front
             if len(statuses) > 1:
                 if statuses[-1][1] == statuses[-2][1]:
                     # last datapoint == second last datapoint
@@ -178,7 +176,7 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
 
     # print out a message only if we're verbose
     def verbose(self, message):
-        if (self.print_verbose):
+        if self.print_verbose:
             print message
 
     # check that the db entries are accurately reflected on
@@ -202,9 +200,9 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
 
         first_production = None
         while 1:
-            if len(mydata) == 0:
+            if not mydata:
                 break
-            if len(theirdata) == 0:
+            if not theirdata:
                 break
             mine = mydata[0]
             my_timestamp = mine[0]
@@ -237,7 +235,7 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
                     print("Extra datapoint from me: %s (%s) %s"
                           % (my_timestamp, x, my_delta))
             else:
-                if (their_timestamp < my_timestamp):
+                if their_timestamp < my_timestamp:
                     print("Extra datapoint from them: %s %s %s"
                           % (their_date, their_time, their_delta))
                     theirdata.pop(0)
@@ -253,25 +251,25 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
                     theirdata.pop(0)
                     mydata.pop(0)
 
-        if len(theirdata):
-                print("There are %d on pvoutput.org which aren't in our data"
-                      % len(theirdata))
-                for output in theirdata:
-                    self.verbose("their extra: date=%s time=%s production=%s"
-                                 % (output[0], output[1], output[2]))
+        if theirdata:
+            print("Thereq are %d on pvoutput.org which aren't in our data"
+                  % len(theirdata))
+            for output in theirdata:
+                self.verbose("their extra: date=%s time=%s production=%s"
+                             % (output[0], output[1], output[2]))
 
-        printed_mydata_warning_once = 0
-        if len(mydata):
-                for mine in mydata:
-                    my_delta = mine[1] - first_production
-                    if my_delta != my_last_delta:  # zeroes at end of day
-                        if not printed_mydata_warning_once:
-                            print(("There are %d extra readings in my database"
-                                   + "which are not on pvoutput.org")
-                                  % len(mydata))
-                            printed_mydata_warning_once = 1
-                        self.verbose("my extra: timestamp=%s cumulative=%s"
-                                     % (mine[0], my_delta))
+        printed_mydata_warning_once = False
+        if mydata:
+            for mine in mydata:
+                my_delta = mine[1] - first_production
+                if my_delta != my_last_delta:  # zeroes at end of day
+                    if not printed_mydata_warning_once:
+                        print(("There are %d extra readings in my database"
+                               + "which are not on pvoutput.org")
+                              % len(mydata))
+                        printed_mydata_warning_once = True
+                    self.verbose("my extra: timestamp=%s cumulative=%s"
+                                 % (mine[0], my_delta))
 
     # reconcile all data in my database against what is on pvoutput.org
     def reconcile(self):
@@ -282,7 +280,7 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
                 # FIXME: API limit; can't get historical information for today
                 continue
             limitdays = self.pvoutput.days_ago_accepted_by_api()
-            if (now - date < datetime.timedelta(days=limitdays)):
+            if now - date < datetime.timedelta(days=limitdays):
                 print "date: %s" % date
                 self.reconcile_date(date)
 
@@ -314,7 +312,7 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
             self.upload_statuses_for_day(day)
             sleep(20)  # so the reconcile works....
 
-        if 1:
+        if True:
             print "reconciling specific date (%s)" % date
             somedate = self.pvoutput.parse_date_and_time(date, '00:00')
             self.reconcile_date(somedate)
@@ -328,18 +326,18 @@ pvoutput_config_filepath = config.pvoutput_config_filepath
 
 mypvoutput = smadata2.pvoutputorg.PVOutputOrg(pvoutput_config_filepath)
 
-if 1:
+if True:
     for inv in config.inverters():
         print("%s (SN: %d)" % (inv.name, inv.serial))
         uploader = SMA2UploadInverterDataToPVOutputOrg(db, inv, mypvoutput)
         uploader.upload_unuploaded_statuses_batch()
 
-exit(0)
+sys.exit(0)
 
 # stuff below this line is useful for fixing data on the server - and
 # working out what needs fixing....
 
-if 0:
+if False:
     for inv in config.inverters():
         print("%s (SN: %d)" % (inv.name, inv.serial))
         uploader = SMA2UploadInverterDataToPVOutputOrg(db, inv, mypvoutput)
@@ -350,28 +348,28 @@ if 0:
         uploader.show_production_for_datapoint("20141030", "06:30")
         uploader.show_production_for_datapoint("20141030", "06:35")
         uploader.show_production_for_datapoint("20141030", "06:40")
-    exit(0)
+    sys.exit(0)
 
-if 0:
+if False:
     for inv in config.inverters():
         print("%s (SN: %d)" % (inv.name, inv.serial))
         uploader = SMA2UploadInverterDataToPVOutputOrg(db, inv, mypvoutput)
         somedate = mypvoutput.parse_date_and_time('20141031', '00:00')
         uploader.reconcile_date(somedate)
-    exit(0)
+    sys.exit(0)
 
-if 0:
+if False:
     for inv in config.inverters():
         print("%s (SN: %d)" % (inv.name, inv.serial))
         uploader = SMA2UploadInverterDataToPVOutputOrg(db, inv, mypvoutput)
         uploader.reconcile()
-    exit(0)
+    sys.exit(0)
 
-if 0:
+if False:
     date = "20141104"
-    fix = 1
+    fix = True
 
     for inv in config.inverters():
         uploader = SMA2UploadInverterDataToPVOutputOrg(db, inv, mypvoutput)
         uploader.do_date(date, fix)
-    exit(0)
+    sys.exit(0)

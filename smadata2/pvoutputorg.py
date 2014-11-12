@@ -21,7 +21,6 @@ import urllib
 import urllib2
 import time
 import json
-import string
 import datetime
 
 
@@ -45,25 +44,23 @@ class PVOutputOrg(object):
     # @param data content of request
     # @return filehandle-ish thing containing response from server
     def make_request(self, sid, scriptpath, data):
-        # print ("make_request called - oops")
-        # exit(1)
         apikey = self.pvoutput_config["apikey"]
         hostnameport = self.pvoutput_config["hostname"]
 
         url = "http://" + hostnameport + scriptpath
 
-        if (len(apikey) == 0):
-            raise(Error("No or bad apikey in pvoutput config"))
+        if not apikey:
+            raise Error("No or bad apikey in pvoutput config")
 
-        if (len(hostnameport) == 0):
-            raise(Error("No or bad hostname in pvoutput config"))
+        if not hostnameport:
+            raise Error("No or bad hostname in pvoutput config")
 
         req = urllib2.Request(url=url, data=data)
         req.add_header("X-Pvoutput-Apikey", apikey)
         req.add_header("X-Pvoutput-SystemId", sid)
         filehandle = urllib2.urlopen(req)
         responsecode = filehandle.getcode()
-        if (responsecode != 200):
+        if responsecode != 200:
             raise Error("Bad HTTP response code (%s) from %s"
                         % (str(responsecode), hostnameport))
         return filehandle
@@ -75,7 +72,7 @@ class PVOutputOrg(object):
     # @return None
     # @fixme check API response
     def addstatus(self, sid, timestamp, total_production):
-        print ("addstatus")
+        print("addstatus")
 
         data = urllib.urlencode({
             "d": time.strftime("%Y%m%d", time.localtime(timestamp)),
@@ -91,19 +88,9 @@ class PVOutputOrg(object):
     # @return None
     # @fixme should check server response rather than just printing...
     def addbatchstatus(self, sid, batch):
-        # func = (lambda x:
-        #          string.join(map((lambda y:
-        #                             [time.strftime("%Y%m%d",
-        #                                            time.localtime(y)),
-        #                              time.strftime("%H:%M",
-        #                                            time.localtime(y))]),
-        #                          x), ','))
-        # productiondata = string.join(map(func,batch),';')
-
         new = []
         for prodinfo in batch:
-            timestamp = prodinfo[0]
-            production = prodinfo[1]
+            timestamp, production = prodinfo
             new.append([
                 time.strftime("%Y%m%d", time.localtime(timestamp)),
                 time.strftime("%H:%M", time.localtime(timestamp)),
@@ -111,8 +98,7 @@ class PVOutputOrg(object):
                 str(-1)
             ])
 
-        func = (lambda x: string.join(x, ','))
-        productiondata = string.join(map(func, new), ';')
+        productiondata = ';'.join(','.join(x) for x in new)
 
         print "productiondata=" + productiondata
         data = urllib.urlencode({
@@ -129,7 +115,7 @@ class PVOutputOrg(object):
     # @param date a datetime object for the first time to return (?!)
     # @return None
     def deletestatus(self, sid, date):
-        (formatted_date, formatted_time) = self.format_date_and_time(date)
+        formatted_date, formatted_time = self.format_date_and_time(date)
         opts = {
             'd': formatted_date,
             # 'h': 1,
@@ -143,7 +129,7 @@ class PVOutputOrg(object):
     # @return a list of lists
     # @fixme this is just dodgy, dodgy, dodgy
     def getstatus(self, sid, date, timefrom, timeto):
-        (formatted_date, formatted_time) = self.format_date_and_time(date)
+        formatted_date, formatted_time = self.format_date_and_time(date)
         opts = {
             'd': formatted_date,
             'h': 1,
@@ -159,10 +145,10 @@ class PVOutputOrg(object):
         filehandle = self.make_request(sid, '/service/r2/getstatus.jsp',
                                        request)
         data = filehandle.read()
-        outputs = string.split(data, ';')
+        outputs = data.split(';')
         ret = []
         for output in outputs:
-            outputentries = string.split(output, ',')
+            outputentries = output.split(',')
             # this throws away most of the data returned:
             ret.append([outputentries[0], outputentries[1],
                         int(outputentries[2])])
@@ -191,7 +177,7 @@ class PVOutputOrg(object):
     # @fixme this should pull its return value from the config
     # @return whether the api-key can use donation-mode
     def donation_mode(self):
-        return 1
+        return True
 
     # returns the number of days ago you can set values using the batchstatus
     # script
