@@ -54,11 +54,8 @@ For packets which don't relate to the inner protocol,
 MAC address.
 
 
-Packet type 0x01: Inner protocol data
--------------------------------------
-
-Packet type 0x01: PPP frame
----------------------------
+Packet type 0x01: PPP frame (last piece)
+----------------------------------------
 
 Offset		Value
 16		0x01
@@ -140,8 +137,10 @@ Packet type 0x05: Unknown
 Packet type 0x07: Error
 -----------------------
 
-Packet type 0x08: Inner protocol continued
-------------------------------------------
+Packet type 0x08: PPP frame (not last piece)
+--------------------------------------------
+
+As type 0x01
 
 Packet type 0x0a: Unkown
 ------------------------
@@ -156,12 +155,12 @@ Inner protocol (PPP protocol 0x6560)
 Offset		Value
 ----------------------
 0		Length of packet, in 32-bit words, including (inner) header, but not ppp header??
-1		?
+1		? A2
 2..7		to address
-8		?
-9		?
+8		? B1
+9		? B2
 10..15		from address
-16..17		???
+16..17		??? C1,C2
 18..19		error code?
 20..21		packet count for multi packet response
 22..23		LE16, low 15 bits are tag value
@@ -171,3 +170,60 @@ Offset		Value
 26..27		Packet subtype
 28..31		Arg 1 (LE)
 32..35		Arg 2 (LE)
+
+
+Command: Total Yield
+--------------------
+
+COMMAND:
+	A2:		E0
+	B1,B2:		00 00
+	C1,C2:		00 00
+	Type:		0200
+	Subtype:	5400
+	Arg1:		0x00260100
+	Arg2:		0x002601ff
+
+RESPONSE:
+	PAYLOAD:
+		0..3	timestamp (LE)
+		4..7	total yield in Wh (LE)
+
+Command: Daily  Yield
+---------------------
+
+COMMAND:
+	A2:		A0
+	B1,B2:		00 00
+	C1,C2:		00 00
+	Type:		0200
+	Subtype:	5400
+	Arg1:		0x00262200
+	Arg2:		0x002622ff
+
+RESPONSE:
+	PAYLOAD:
+		0..3	timestamp (LE)
+		4..7	day's yield in Wh (LE)
+
+Command: Historic data (5 minute intervals)
+-------------------------------------------
+
+Command: Daily  Yield
+---------------------
+
+COMMAND:
+	A2:		E0
+	B1,B2:		00 00
+	C1,C2:		00 00
+	Type:		0200
+	Subtype:	7000
+	Arg1:		start time (unix date, LE)
+	Arg2:		end time (unix date, LE)
+
+RESPONSE:
+	PAYLOAD:
+		0..3	timestamp (unix date, LE)
+		4..7	total yield at that time in Wh (LE)
+		8..11	???
+		...	Pattern repeated
