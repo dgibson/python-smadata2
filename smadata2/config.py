@@ -19,11 +19,12 @@
 
 from __future__ import print_function
 
+import sys
 import os
 import time
 import calendar
 import dateutil.parser
-import ConfigParser
+import json
 
 import protocol
 import util
@@ -48,52 +49,56 @@ class SMAData2InverterConfig(object):
         conn.logon()
         return conn
 
+    def __str__(self):
+        return ("%s:\n" % self.name
+                + "\tSerial number: '%s'\n" % self.serial
+                + "\tBluetooth address: %s\n" % self.bdaddr)
 
 DEFAULT_START_TIME = "2010-01-01"
 
 
 class SMAData2Config(object):
     def __init__(self, configfile=DEFAULT_CONFIG_FILE):
-        config = ConfigParser.SafeConfigParser(
-            {'start_time': DEFAULT_START_TIME}
-        )
-        config.read(configfile)
+        f = open(configfile, "r")
+
+        alljson = json.load(f)
+
+        dbname = os.path.expanduser("~/.btsmadb.v0.sqlite")
+        if "database" in alljson:
+            dbjson = alljson["database"]
+            if "filename" in dbjson:
+                dbname = dbjson["filename"]
+        self.dbname = os.path.expanduser(dbname)
+
+        pvo_config = "~/.pvoutput.org.rc"
+        if "pvoutput.org" in alljson:
+            pvojson = alljson["pvoutput.org"]
+            if "config" in pvojson:
+                pvo_config = pvojson["config"]
+        self.pvoutput_config_file = os.path.expanduser(pvo_config)
 
         self.invs = []
-
-        if config.has_option('DATABASE', 'filename'):
-            self.dbname = os.path.expanduser(config.get('DATABASE',
-                                                        'filename'))
-        else:
-            self.dbname = os.path.expanduser("~/.btsmadb.v0.sqlite")
-
-        if config.has_option('pvoutput.org', 'config'):
-            self.pvoutput_config_filepath = \
-                os.path.expanduser(config.get('pvoutput.org', 'config'))
-        else:
-            self.pvoutput_config_filepath = \
-                os.path.expanduser("~/.pvoutput.org.rc")
-
-        for s in config.sections():
-            if s == 'DATABASE':
-                continue
-            if s == 'pvoutput.org':
-                continue
-
-            addr = config.get(s, 'bluetooth')
-            serial = config.getint(s, 'serial')
-            pvoutput_sid = config.get(s, 'pvoutput-sid')
-            starttime = util.parse_time(config.get(s, 'start_time'))
-            inv = SMAData2InverterConfig(s, addr, serial,
-                                         starttime, pvoutput_sid)
-            self.invs.append(inv)
+        if "inverters" in alljson:
+            for i, invjson in enumerate(alljson["inverters"]):
+                name = invjson.get("name", "inverter-%04d" % i)
+                addr = invjson["bluetooth"]
+                serial = invjson["serial"]
+                pvoutput_sid = invjson.get("pvoutput-sid", None)
+                starttime = invjson.get("start-time", None)
+                if starttime is not None:
+                    starttime = util.parse_time(starttime)
+                inv = SMAData2InverterConfig(name, addr, serial,
+                                             starttime, pvoutput_sid)
+                self.invs.append(inv)
 
     def inverters(self):
         return self.invs
 
 
 if __name__ == '__main__':
-    config = SMAData2Config()
+    if sys.argv[1:]:
+        config = SMAData2Config(sys.argv[1])
+    else:
+        config = SMAData2Config()
     for inv in config.inverters():
-        print("%s:" % inv.name)
-        print("\tBluetooth address: %s" % inv.bdaddr)
+        print(inv)
