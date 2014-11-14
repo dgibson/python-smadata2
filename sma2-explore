@@ -105,9 +105,9 @@ def dump_6560(prefix, from2, to2, a2, b1, b2, c1, c2, tag,
     print(hexdump(extra, prefix + "    "))
 
 
-class BTSMAConnectionCLI(BTSMAConnection):
+class SMAData2CLI(SMAData2BluetoothConnection):
     def __init__(self, addr):
-        super(BTSMAConnectionCLI, self).__init__(addr)
+        super(SMAData2CLI, self).__init__(addr)
         print("Connected %s -> %s"
               % (self.local_addr, self.remote_addr))
         self.rxpid = None
@@ -131,7 +131,7 @@ class BTSMAConnectionCLI(BTSMAConnection):
 
     def rx_raw(self, pkt):
         print("\n" + hexdump(pkt, "Rx< "))
-        super(BTSMAConnectionCLI, self).rx_raw(pkt)
+        super(SMAData2CLI, self).rx_raw(pkt)
 
     def rx_outer(self, from_, to_, type_, payload):
         dump_outer("Rx<     ", from_, to_, type_, payload)
@@ -143,12 +143,12 @@ class BTSMAConnectionCLI(BTSMAConnection):
                       % (payload[4] / 255 * 100))
         elif (type_ in [OTYPE_PPP, OTYPE_PPP2]):
             dump_ppp_raw("Rx<         ", payload)
-        super(BTSMAConnectionCLI, self).rx_outer(from_, to_,
+        super(SMAData2CLI, self).rx_outer(from_, to_,
                                                  type_, payload)
 
     def rx_ppp(self, from_, protocol, payload):
         dump_ppp("Rx<         ", protocol, payload)
-        super(BTSMAConnectionCLI, self).rx_ppp(from_, protocol, payload)
+        super(SMAData2CLI, self).rx_ppp(from_, protocol, payload)
 
     def rx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag,
                 type_, subtype, arg1, arg2, extra,
@@ -156,18 +156,18 @@ class BTSMAConnectionCLI(BTSMAConnection):
         dump_6560("Rx<             ", from2, to2, a2, b1, b2, c1, c2, tag,
                   type_, subtype, arg1, arg2, extra,
                   response, error, pktcount, first)
-        super(BTSMAConnectionCLI, self).rx_6560(from2, to2, a2, b1, b2, c1, c2,
+        super(SMAData2CLI, self).rx_6560(from2, to2, a2, b1, b2, c1, c2,
                                                 tag, type_, subtype,
                                                 arg1, arg2,
                                                 extra, response, error,
                                                 pktcount, first)
 
     def tx_raw(self, pkt):
-        super(BTSMAConnectionCLI, self).tx_raw(pkt)
+        super(SMAData2CLI, self).tx_raw(pkt)
         print("\n" + hexdump(pkt, "Tx> "))
 
     def tx_outer(self, from_, to_, type_, payload):
-        super(BTSMAConnectionCLI, self).tx_outer(from_, to_,
+        super(SMAData2CLI, self).tx_outer(from_, to_,
                                                  type_, payload)
         dump_outer("Tx>     ", from_, to_, type_, payload)
         if type_ == OTYPE_GETVAR:
@@ -175,13 +175,13 @@ class BTSMAConnectionCLI(BTSMAConnection):
             print("Tx>         GETVAR 0x%02x" % varid)
 
     def tx_ppp(self, to_, protocol, payload):
-        super(BTSMAConnectionCLI, self).tx_ppp(to_, protocol, payload)
+        super(SMAData2CLI, self).tx_ppp(to_, protocol, payload)
         dump_ppp("Tx>         ", protocol, payload)
 
     def tx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag,
                 type_, subtype, arg1, arg2, extra=bytearray(),
                 response=False, error=0, pktcount=0, first=True):
-        super(BTSMAConnectionCLI, self).tx_6560(from2, to2, a2, b1, b2, c1, c2,
+        super(SMAData2CLI, self).tx_6560(from2, to2, a2, b1, b2, c1, c2,
                                                 tag, type_, subtype,
                                                 arg1, arg2, extra, response,
                                                 error, pktcount, first)
@@ -191,7 +191,7 @@ class BTSMAConnectionCLI(BTSMAConnection):
 
     def cli(self):
         while True:
-            sys.stdout.write("BTSMA %s >> " % self.remote_addr)
+            sys.stdout.write("SMA2 %s >> " % self.remote_addr)
             try:
                 line = raw_input().split()
             except EOFError:
@@ -284,10 +284,10 @@ class BTSMAConnectionCLI(BTSMAConnection):
 
 if __name__ == '__main__':
     if len(sys.argv) != 2:
-        print("Usage: btcli.py <BD addr>", file=sys.stderr)
+        print("Usage: %s <BD addr>" % sys.argv[0], file=sys.stderr)
         sys.exit(1)
 
-    cli = BTSMAConnectionCLI(sys.argv[1])
+    cli = SMAData2CLI(sys.argv[1])
 
     cli.start_rxthread()
     cli.cli()
