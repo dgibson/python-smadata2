@@ -30,7 +30,7 @@ config = smadata2.config.SMAData2Config()
 db = config.database()
 
 for inv in config.inverters():
-    print("%s (SN: %d)" % (inv.name, inv.serial))
+    print("%s (SN: %s)" % (inv.name, inv.serial))
 
     lasttime = db.get_last_historic(inv.serial)
     if lasttime is None:
