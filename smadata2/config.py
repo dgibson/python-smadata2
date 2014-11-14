@@ -35,15 +35,14 @@ DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
 
 
 class SMAData2InverterConfig(object):
-    def __init__(self, invjson):
+    def __init__(self, invjson, defname):
         self.bdaddr = invjson["bluetooth"]
         self.serial = invjson["serial"]
-        self.name = invjson.get("name", None)
+        self.name = invjson.get("name", defname)
         if "start-time" in invjson:
             self.starttime = util.parse_time(invjson["start-time"])
         else:
             self.starttime = None
-        self.pvoutput_sid = invjson.get("pvoutput-sid", None)
 
     def connect(self):
         return protocol.SMAData2BluetoothConnection(self.bdaddr)
@@ -55,9 +54,40 @@ class SMAData2InverterConfig(object):
         return conn
 
     def __str__(self):
-        return ("%s:\n" % self.name
-                + "\tSerial number: '%s'\n" % self.serial
-                + "\tBluetooth address: %s\n" % self.bdaddr)
+        return ("\t%s:\n" % self.name
+                + "\t\tSerial number: '%s'\n" % self.serial
+                + "\t\tBluetooth address: %s\n" % self.bdaddr)
+
+
+class SMAData2SystemConfig(object):
+    def __init__(self, index, sysjson=None, invjson=None):
+        if sysjson:
+            assert invjson is None
+
+            self.name = sysjson.get("name", "system-%04d" % index)
+            self.pvoutput_sid = sysjson.get("pvoutput-sid", None)
+
+            self.invs = []
+            for i, invjson in enumerate(sysjson["inverters"]):
+                defname = "%s-inverter-%04d" % (self.name, i)
+                self.invs.append(SMAData2InverterConfig(invjson, defname))
+        else:
+            assert invjson is not None
+
+            inv = SMAData2InverterConfig(invjson,
+                                         "standalone-inverter-%04d" % index)
+            self.name = inv.name
+            self.pvoutput_sid = invjson.get("pvoutput-sid", None)
+
+            self.invs = [inv]
+
+    def inverters(self):
+        return self.invs
+
+    def __str__(self):
+        return ("%s: (pvoutput.org SID '%s')\n" % (self.name,
+                                                   self.pvoutput_sid)
+                + "".join(str(inv) for inv in self.invs))
 
 DEFAULT_START_TIME = "2010-01-01"
 
@@ -80,13 +110,17 @@ class SMAData2Config(object):
             self.pvoutput_server = pvojson.get("server", None)
             self.pvoutput_apikey = pvokson.get("apikey", None)
 
-        self.invs = []
-        if "inverters" in alljson:
-            for invjson in alljson["inverters"]:
-                self.invs.append(SMAData2InverterConfig(invjson))
+        self.syslist = []
+        if "systems" in alljson:
+            for i, sysjson in enumerate(alljson["systems"]):
+                self.syslist.append(SMAData2SystemConfig(i, sysjson=sysjson))
 
-    def inverters(self):
-        return self.invs
+        if "inverters" in alljson:
+            for i, invjson in enumerate(alljson["inverters"]):
+                self.syslist.append(SMAData2SystemConfig(i, invjson=invjson))
+
+    def systems(self):
+        return self.syslist
 
     def pvoutput_connect(self):
         return pvoutputorg.PVOutputOrgConnection(self.pvoutput_server,
@@ -101,5 +135,5 @@ if __name__ == '__main__':
         config = SMAData2Config(sys.argv[1])
     else:
         config = SMAData2Config()
-    for inv in config.inverters():
-        print(inv)
+    for system in config.systems():
+        print(system)

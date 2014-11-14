@@ -29,32 +29,33 @@ import smadata2.db
 config = smadata2.config.SMAData2Config()
 db = config.database()
 
-for inv in config.inverters():
-    print("%s (SN: %s)" % (inv.name, inv.serial))
+for system in config.systems():
+    for inv in system.inverters():
+        print("%s (SN: %s)" % (inv.name, inv.serial))
 
-    lasttime = db.get_last_historic(inv.serial)
-    if lasttime is None:
-        lasttime = inv.starttime
+        lasttime = db.get_last_historic(inv.serial)
+        if lasttime is None:
+            lasttime = inv.starttime
 
-    now = int(time.time())
+        now = int(time.time())
 
-    print("Retrieving data from %s to %s"
-          % (smadata2.util.format_time(lasttime),
-             smadata2.util.format_time(now)))
+        print("Retrieving data from %s to %s"
+              % (smadata2.util.format_time(lasttime),
+                 smadata2.util.format_time(now)))
 
-    sma = inv.connect_and_logon()
+        sma = inv.connect_and_logon()
 
-    data = sma.historic(lasttime+1, now)
-    if len(data):
-        print("Downloaded %d observations from %s to %s"
-              % (len(data), smadata2.util.format_time(data[0][0]),
-                 smadata2.util.format_time(data[-1][0])))
-    else:
-        print("No new data")
+        data = sma.historic(lasttime+1, now)
+        if len(data):
+            print("Downloaded %d observations from %s to %s"
+                  % (len(data), smadata2.util.format_time(data[0][0]),
+                     smadata2.util.format_time(data[-1][0])))
+        else:
+            print("No new data")
 
-    for timestamp, total in data:
-        if total == 0xffffffff:
-            continue
-        db.add_historic(inv.serial, timestamp, total)
+        for timestamp, total in data:
+            if total == 0xffffffff:
+                continue
+            db.add_historic(inv.serial, timestamp, total)
 
-    db.commit()
+        db.commit()

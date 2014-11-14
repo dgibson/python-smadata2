@@ -25,13 +25,16 @@ from smadata2.util import format_time
 
 config = smadata2.config.SMAData2Config()
 
-for inv in config.inverters():
-    print("%s:" % inv.name)
+for system in config.systems():
+    print("%s:" % system.name)
 
-    sma = inv.connect_and_logon()
+    for inv in system.inverters():
+        print("\t%s:" % inv.name)
 
-    dtime, daily = sma.daily_yield()
-    print("\tDaily generation at %s:\t%d Wh" % (format_time(dtime), daily))
+        sma = inv.connect_and_logon()
 
-    ttime, total = sma.total_yield()
-    print("\tTotal generation at %s:\t%d Wh" % (format_time(ttime), total))
+        dtime, daily = sma.daily_yield()
+        print("\t\tDaily generation at %s:\t%d Wh" % (format_time(dtime), daily))
+
+        ttime, total = sma.total_yield()
+        print("\t\tTotal generation at %s:\t%d Wh" % (format_time(ttime), total))
