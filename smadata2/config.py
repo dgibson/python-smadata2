@@ -31,7 +31,7 @@ import pvoutputorg
 import util
 import db
 
-DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2rc")
+DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
 
 
 class SMAData2InverterConfig(object):
