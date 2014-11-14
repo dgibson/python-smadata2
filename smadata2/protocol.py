@@ -402,6 +402,11 @@ class SMAData2BluetoothConnection(object):
                             0xe0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
                             0x200, 0x7000, fromtime, totime)
 
+    def tx_historic_daily(self, fromtime, totime):
+        return self.tx_6560(self.local_addr2, self.BROADCAST2,
+                            0xe0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
+                            0x200, 0x7020, fromtime, totime)
+
     def wait(self, class_, cond=None):
         self.waitvar = None
         fn = getattr(self, 'rx_' + class_)
@@ -516,6 +521,18 @@ class SMAData2BluetoothConnection(object):
                 points.append((timestamp, val))
         return points
 
+    def historic_daily(self, fromtime, totime):
+        tag = self.tx_historic_daily(fromtime, totime)
+        data = self.wait_6560_multi(tag)
+        points = []
+        for from2, type_, subtype, arg1, arg2, extra in data:
+            while extra:
+                timestamp = bytes2int(extra[0:4])
+                val = bytes2int(extra[4:8])
+                extra = extra[12:]
+                points.append((timestamp, val))
+        return points
+
 
 def ptime(str):
     return int(time.mktime(time.strptime(str, "%Y-%m-%d")))
@@ -553,6 +570,22 @@ def cmd_historic(sma, args):
         sys.exit(1)
 
     hlist = sma.historic(fromtime, totime)
+    for timestamp, val in hlist:
+        print("%s: Total generation %d Wh"
+              % (format_time(timestamp), val))
+
+def cmd_historic_daily(sma, args):
+    fromtime = ptime("2013-01-01")
+    totime = int(time.time())  # Now
+    if len(args) > 1:
+        fromtime = ptime(args[1])
+    if len(args) > 2:
+        totime = ptime(args[2])
+    if len(args) > 3:
+        print("Command usage: historic [start-date [end-date]]")
+        sys.exit(1)
+
+    hlist = sma.historic_daily(fromtime, totime)
     for timestamp, val in hlist:
         print("%s: Total generation %d Wh"
               % (format_time(timestamp), val))
