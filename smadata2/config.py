@@ -35,12 +35,15 @@ DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
 
 
 class SMAData2InverterConfig(object):
-    def __init__(self, name, bdaddr, serial, starttime, pvoutput_sid):
-        self.name = name
-        self.bdaddr = bdaddr
-        self.serial = serial
-        self.starttime = starttime
-        self.pvoutput_sid = pvoutput_sid
+    def __init__(self, invjson):
+        self.bdaddr = invjson["bluetooth"]
+        self.serial = invjson["serial"]
+        self.name = invjson.get("name", None)
+        if "start-time" in invjson:
+            self.starttime = util.parse_time(invjson["start-time"])
+        else:
+            self.starttime = None
+        self.pvoutput_sid = invjson.get("pvoutput-sid", None)
 
     def connect(self):
         return protocol.SMAData2BluetoothConnection(self.bdaddr)
@@ -79,17 +82,8 @@ class SMAData2Config(object):
 
         self.invs = []
         if "inverters" in alljson:
-            for i, invjson in enumerate(alljson["inverters"]):
-                name = invjson.get("name", "inverter-%04d" % i)
-                addr = invjson["bluetooth"]
-                serial = invjson["serial"]
-                pvoutput_sid = invjson.get("pvoutput-sid", None)
-                starttime = invjson.get("start-time", None)
-                if starttime is not None:
-                    starttime = util.parse_time(starttime)
-                inv = SMAData2InverterConfig(name, addr, serial,
-                                             starttime, pvoutput_sid)
-                self.invs.append(inv)
+            for invjson in alljson["inverters"]:
+                self.invs.append(SMAData2InverterConfig(invjson))
 
     def inverters(self):
         return self.invs
