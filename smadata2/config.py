@@ -29,6 +29,7 @@ import json
 import protocol
 import pvoutputorg
 import util
+import db
 
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2rc")
 
@@ -96,6 +97,9 @@ class SMAData2Config(object):
     def pvoutput_connect(self):
         return pvoutputorg.PVOutputOrgConnection(self.pvoutput_server,
                                                  self.pvoutput_apikey)
+
+    def database(self):
+        return db.SMADatabaseSQLiteV0(self.dbname)
 
 
 if __name__ == '__main__':

@@ -27,7 +27,7 @@ import smadata2.config
 import smadata2.db
 
 config = smadata2.config.SMAData2Config()
-db = smadata2.db.SMADatabaseSQLiteV0(config.dbname)
+db = config.database()
 
 for inv in config.inverters():
     print("%s (SN: %d)" % (inv.name, inv.serial))

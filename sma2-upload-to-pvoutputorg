@@ -322,7 +322,7 @@ class SMA2UploadInverterDataToPVOutputOrg(object):
 
 config = smadata2.config.SMAData2Config()
 
-db = smadata2.db.SMADatabaseSQLiteV0(config.dbname)
+db = config.database()
 
 mypvoutput = config.pvoutput_connect()
 
