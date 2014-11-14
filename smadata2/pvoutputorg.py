@@ -22,7 +22,6 @@ from __future__ import print_function
 import urllib
 import urllib2
 import time
-import json
 import datetime
 
 
@@ -33,17 +32,16 @@ class Error(Exception):
 # http://pvoutput.org/help.html#api-spec
 
 
-class PVOutputOrg(object):
-    def __init__(self, config_filepath):
-        self.config = json.load(open(config_filepath, "r"))
-        self.apikey = self.config["apikey"]
-        self.hostnameport = self.config["hostname"]
+class PVOutputOrgConnection(object):
+    def __init__(self, server, apikey):
+        if not server:
+            raise ValueError("Bad or missing server")
 
         if not apikey:
-            raise Error("No or bad apikey in pvoutput config")
+            raise ValueError("Bad or missing apikey")
 
-        if not hostnameport:
-            raise Error("No or bad hostname in pvoutput config")
+        self.hostnameport = server
+        self.apikey = apikey
 
     # call a script on the server configured in the config file
     # @fixme currently server includes port number

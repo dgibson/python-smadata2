@@ -324,9 +324,7 @@ config = smadata2.config.SMAData2Config()
 
 db = smadata2.db.SMADatabaseSQLiteV0(config.dbname)
 
-pvoutput_config_filepath = config.pvoutput_config_filepath
-
-mypvoutput = smadata2.pvoutputorg.PVOutputOrg(pvoutput_config_filepath)
+mypvoutput = config.pvoutput_connect()
 
 if True:
     for inv in config.inverters():

@@ -27,6 +27,7 @@ import dateutil.parser
 import json
 
 import protocol
+import pvoutputorg
 import util
 
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2rc")
@@ -70,12 +71,10 @@ class SMAData2Config(object):
                 dbname = dbjson["filename"]
         self.dbname = os.path.expanduser(dbname)
 
-        pvo_config = "~/.pvoutput.org.rc"
         if "pvoutput.org" in alljson:
             pvojson = alljson["pvoutput.org"]
-            if "config" in pvojson:
-                pvo_config = pvojson["config"]
-        self.pvoutput_config_file = os.path.expanduser(pvo_config)
+            self.pvoutput_server = pvojson.get("server", None)
+            self.pvoutput_apikey = pvokson.get("apikey", None)
 
         self.invs = []
         if "inverters" in alljson:
@@ -93,6 +92,10 @@ class SMAData2Config(object):
 
     def inverters(self):
         return self.invs
+
+    def pvoutput_connect(self):
+        return pvoutputorg.PVOutputOrgConnection(self.pvoutput_server,
+                                                 self.pvoutput_apikey)
 
 
 if __name__ == '__main__':
