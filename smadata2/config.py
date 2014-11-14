@@ -25,8 +25,8 @@ import calendar
 import dateutil.parser
 import ConfigParser
 
-import smadata2.protocol
-import smadata2.util
+import protocol
+import util
 
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2rc")
 
@@ -40,7 +40,7 @@ class SMAData2InverterConfig(object):
         self.pvoutput_sid = pvoutput_sid
 
     def connect(self):
-        return smadata2.protocol.SMAData2BluetoothConnection(self.bdaddr)
+        return protocol.SMAData2BluetoothConnection(self.bdaddr)
 
     def connect_and_logon(self):
         conn = self.connect()
@@ -83,7 +83,7 @@ class SMAData2Config(object):
             addr = config.get(s, 'bluetooth')
             serial = config.getint(s, 'serial')
             pvoutput_sid = config.get(s, 'pvoutput-sid')
-            starttime = smadata2.util.parse_time(config.get(s, 'start_time'))
+            starttime = util.parse_time(config.get(s, 'start_time'))
             inv = SMAData2InverterConfig(s, addr, serial,
                                          starttime, pvoutput_sid)
             self.invs.append(inv)
