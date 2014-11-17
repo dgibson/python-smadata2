@@ -75,13 +75,14 @@ class SMADatabaseSQLiteV0(SMADatabase):
     # return midnights for each day in the database
     # @param serial the inverter seial number to retrieve midnights for
     # @return all midnights in database as datetime objects
-    def midnights(self, serial):
+    def midnights(self, inverters):
         c = self.conn.cursor()
-        c.execute("SELECT timestamp "
+        serials = ','.join(x.serial for x in inverters)
+        c.execute("SELECT distinct(timestamp) "
                   "FROM generation "
-                  "WHERE inverter_serial = ? "
+                  "WHERE inverter_serial  in ( ? ) "
                   "AND timestamp % 86400 = 0 "
-                  "ORDER BY timestamp ASC", (serial,))
+                  "ORDER BY timestamp ASC", (serials,))
         r = c.fetchall()
         r = map(lambda x: datetime.datetime.utcfromtimestamp(x[0]), r)
         return r
@@ -89,16 +90,34 @@ class SMADatabaseSQLiteV0(SMADatabase):
     # retrieve all entries for a day from the database
     # @note this seems to get timezone stuff right :-) "a day" is a "local" day
     # @param date a datetime object for midnight of the day you want
-    def get_entries_for_day(self, serial, start_datetime):
+    # fixed
+    def get_entries_for_day(self, inverters, start_datetime):
         c = self.conn.cursor()
         before_datetime = start_datetime + datetime.timedelta(days=1)
         start_unixtime = time.mktime(start_datetime.timetuple())
         before_unixtime = time.mktime(before_datetime.timetuple())
-        c.execute("SELECT timestamp,total_yield "
+        serials = ','.join(x.serial for x in inverters)
+        c.execute("SELECT timestamp,total_yield,inverter_serial "
                   "FROM generation "
-                  "WHERE inverter_serial = ? "
+                  "WHERE inverter_serial in  ( ? ) "
                   "AND timestamp >= ? and timestamp < ?"
-                  "ORDER BY timestamp ASC", (serial, start_unixtime,
+                  "ORDER BY timestamp ASC", (serials, start_unixtime,
+                                             before_unixtime))
+        r = c.fetchall()
+        return r
+
+    def get_datapoint_totals_for_day(self, inverters, start_datetime):
+        c = self.conn.cursor()
+        before_datetime = start_datetime + datetime.timedelta(days=1)
+        start_unixtime = time.mktime(start_datetime.timetuple())
+        before_unixtime = time.mktime(before_datetime.timetuple())
+        serials = ','.join(x.serial for x in inverters)
+        c.execute("SELECT timestamp,sum(total_yield),count(inverter_serial) "
+                  "FROM generation "
+                  "WHERE inverter_serial in  ( ? ) "
+                  "AND timestamp >= ? and timestamp < ? "
+                  "group by timestamp "
+                  "ORDER BY timestamp ASC", (serials, start_unixtime,
                                              before_unixtime))
         r = c.fetchall()
         return r
@@ -111,17 +130,19 @@ class SMADatabaseSQLiteV0(SMADatabase):
             return None
         return entries[len(entries)-1]
 
-    def get_entry(self, serial, timestamp):
+    # fixed
+    def get_entries(self, inverters, timestamp):
         c = self.conn.cursor()
-        c.execute("SELECT timestamp,total_yield "
+        serials = ','.join(x.serial for x in inverters)
+        c.execute("SELECT timestamp,total_yield,inverter_serial "
                   "FROM generation "
-                  "WHERE inverter_serial = ? "
+                  "WHERE inverter_serial in ( ? ) "
                   "AND timestamp = ? "
-                  "ORDER BY timestamp DESC LIMIT ?", (serial, timestamp, 1))
+                  "ORDER BY timestamp DESC LIMIT ?", (serials, timestamp, 1))
         r = c.fetchall()
         if len(r) == 0:
             return None
-        return r[0]
+        return r
 
     def get_last_entries(self, serial, count):
         c = self.conn.cursor()
@@ -132,14 +153,26 @@ class SMADatabaseSQLiteV0(SMADatabase):
         r = c.fetchall()
         return r
 
-    def get_entries_younger_than(self, serial, entry):
-        timestamp = entry[0]
+    # def get_entries_younger_than(self, serial, entry):
+    #     timestamp = entry[0]
+    #     c = self.conn.cursor()
+    #     c.execute("SELECT timestamp,total_yield "
+    #               "FROM generation "
+    #               "WHERE inverter_serial = ? AND "
+    #               " timestamp > ? "
+    #               "ORDER BY timestamp ASC", (serial, str(timestamp)))
+    #     r = c.fetchall()
+    #     return r
+
+    def get_productions_younger_than(self, inverters, timestamp):
+        serials = ','.join(x.serial for x in inverters)
         c = self.conn.cursor()
-        c.execute("SELECT timestamp,total_yield "
+        c.execute("SELECT timestamp,total_yield,count(inverter_serial) "
                   "FROM generation "
-                  "WHERE inverter_serial = ? AND "
+                  "WHERE inverter_serial in ( ? ) AND "
                   " timestamp > ? "
-                  "ORDER BY timestamp ASC", (serial, str(timestamp)))
+                  "group by timestamp "
+                  "ORDER BY timestamp ASC", (serials, str(timestamp)))
         r = c.fetchall()
         return r
 
@@ -150,45 +183,36 @@ class SMADatabaseSQLiteV0(SMADatabase):
         r = c.fetchone()
         return r[0]
 
-    def pvoutput_get_hwm(self, serial):
+    def pvoutput_get_last_datetime_uploaded(self, sid):
         c = self.conn.cursor()
-        c.execute("SELECT hwm "
+        c.execute("SELECT last_datetime_uploaded "
                   "FROM pvoutput "
-                  "WHERE inverter_serial = ?", (serial,))
+                  "WHERE sid = ?", (sid,))
         r = c.fetchone()
         if r is None:
             return None
-        hwm_timestamp = r[0]
-        if r[0] is None:
-            return None
-        return self.get_entry(serial, hwm_timestamp)
+        return r[0]
 
-    def pvoutput_maybe_init(self, serial):
+    def pvoutput_maybe_init_system(self, sid):
+        print(sid)
         c = self.conn.cursor()
         c.execute("SELECT * FROM pvoutput"
-                  " WHERE inverter_serial = ?",
-                  (serial,))
+                  " WHERE sid = ?",
+                  (sid,))
         r = c.fetchone()
         if r is None:
             c = self.conn.cursor()
-            c.execute("INSERT INTO pvoutput(inverter_serial) "
+            c.execute("INSERT INTO pvoutput(last_datetime_uploaded) "
                       "VALUES ( ? )",
-                      (serial,))
+                      (sid))
             self.commit()
 
-    def pvoutput_init_hwm(self, serial, value):
+    def pvoutput_set_last_datetime_uploaded(self, sid, value):
         c = self.conn.cursor()
-        self.pvoutput_maybe_init(serial)
+        self.pvoutput_maybe_init_system(sid)
         c.execute("update pvoutput "
-                  "SET hwm = ?"
-                  "WHERE inverter_serial = ?", (value, serial))
-        self.commit()
-
-    def pvoutput_set_hwm(self, serial, new_hwm):
-        c = self.conn.cursor()
-        c.execute("UPDATE pvoutput "
-                  "SET hwm = ?"
-                  "WHERE inverter_serial = ?", (new_hwm, serial))
+                  "SET last_datetime_uploaded = ?"
+                  "WHERE sid = ?", (value, sid))
         self.commit()
 
     def get_one_historic(self, serial, timestamp):

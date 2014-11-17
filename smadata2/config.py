@@ -108,7 +108,7 @@ class SMAData2Config(object):
         if "pvoutput.org" in alljson:
             pvojson = alljson["pvoutput.org"]
             self.pvoutput_server = pvojson.get("server", None)
-            self.pvoutput_apikey = pvokson.get("apikey", None)
+            self.pvoutput_apikey = pvojson.get("apikey", None)
 
         self.syslist = []
         if "systems" in alljson:

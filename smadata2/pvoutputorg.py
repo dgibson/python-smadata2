@@ -32,6 +32,7 @@ class Error(Exception):
 # http://pvoutput.org/help.html#api-spec
 
 
+# /home/pbarker/.pvoutput.org.rc
 class PVOutputOrgConnection(object):
     def __init__(self, server, apikey):
         if not server:
