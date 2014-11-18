@@ -44,13 +44,14 @@ class PVOutputOrgConnection(object):
         self.hostnameport = server
         self.apikey = apikey
 
-    # call a script on the server configured in the config file
-    # @fixme currently server includes port number
-    # @param sid pvoutput.org system id
-    # @param scriptpath path to script on server
-    # @param data content of request
-    # @return filehandle-ish thing containing response from server
+    # 
     def make_request(self, sid, scriptpath, data):
+        """ call a script on the server configured in the config file
+        @param sid pvoutput.org system id
+        @param scriptpath path to script on server
+        @param data content of request
+        @return filehandle-ish thing containing response from server
+        """
         url = "http://" + self.hostnameport + scriptpath
 
         req = urllib2.Request(url=url, data=data)
@@ -62,6 +63,23 @@ class PVOutputOrgConnection(object):
             raise Error("Bad HTTP response code (%s) from %s"
                         % (str(responsecode), self.hostnameport))
         return filehandle
+
+    def addoutput(self, sid, somedate, somedelta):
+        """ add a daily output to pvoutput
+        @param sid a pvoutput system id
+        @param date to add output for
+        @param delta production for this day
+        @return None
+        @fixme check API response
+        """
+
+        data = urllib.urlencode({
+            "d": self.format_date(somedate),
+            "g": somedelta,
+        })
+        filehandle = self.make_request(sid, "/service/r2/addoutput.jsp", data)
+        content = filehandle.read()
+        print("Server said: " + content)
 
     # add a single data point to the server
     # @param sid a pvoutput system id
@@ -78,7 +96,7 @@ class PVOutputOrgConnection(object):
             "c1": 1,
             "v1": total_production,
         })
-        self.make_request(self, sid, "/service/r2/addstatus.jsp", data)
+        self.make_request(sid, "/service/r2/addstatus.jsp", data)
 
     # upload a whole bunch of statuses at the same time
     # @param sid a a system ID
@@ -121,12 +139,13 @@ class PVOutputOrgConnection(object):
         data = urllib.urlencode(opts)
         self.make_request(sid, "/service/r2/deletestatus.jsp", data)
 
-    # retrieve data for a time period - always from midnight ATM
-    # @param sid a pvoutput system id
-    # @param date a datetime object for the first time to return (?!)
-    # @return a list of lists
-    # @fixme this is just dodgy, dodgy, dodgy
-    def getstatus(self, sid, date, timefrom, timeto):
+    def getstatusx(self, sid, date, timefrom, timeto):
+        """ retrieve data for a time period - always from midnight ATM
+        @param sid a pvoutput system id
+        @param date a datetime object for the first time to return (?!)
+        @return a list of lists
+        @fixme this is just dodgy, dodgy, dodgy
+        """
         formatted_date, formatted_time = self.format_date_and_time(date)
         opts = {
             'd': formatted_date,
@@ -152,6 +171,71 @@ class PVOutputOrgConnection(object):
                         int(outputentries[2])])
         return ret
 
+    # retrieve data for a time period - always from midnight ATM
+    # @param sid a pvoutput system id
+    # @param fromdatetime first datetime to return status for
+    # @param number of entries to return
+    # @return a list of lists
+    # @fixme this is just dodgy, dodgy, dodgy
+    def getstatus(self, sid, fromdatetime, count):
+        formatted_date, formatted_time = self.format_date_and_time(fromdatetime)
+        opts = {
+            'd': formatted_date,
+            't': formatted_time,
+            'h': 1,
+            'limit': count,
+            'asc': 1,
+        }
+        # if timefrom is not None:
+        #     opts['from'] = timefrom
+        #     if timeto is not None:
+        #         opts['to'] = timeto
+
+        request = urllib.urlencode(opts)
+        filehandle = self.make_request(sid, '/service/r2/getstatus.jsp',
+                                       request)
+        data = filehandle.read()
+        outputs = data.split(';')
+        ret = []
+        for output in outputs:
+            outputentries = output.split(',')
+            # this throws away most of the data returned:
+            ret.append([outputentries[0], outputentries[1],
+                        int(outputentries[2])])
+        return ret
+
+    # 
+    def getmissing(self,sid,datefrom,dateto):
+        """ Get Missing service retrieves a list of output dates missing 
+        @param datefrom first date to check
+        @param dateto last date to check
+        @return a list of date objects
+        """
+        if datefrom is None:
+            raise Error("datefrom is None")
+        if dateto is None:
+            raise Error("dateto is null")
+
+        formatted_datefrom = self.format_date(datefrom)
+        formatted_dateto = self.format_date(dateto)
+
+        opts = {
+            'df': formatted_datefrom,
+            'dt': formatted_dateto,
+        }
+
+        request = urllib.urlencode(opts)
+        filehandle = self.make_request(sid, '/service/r2/getmissing.jsp',
+                                       request)
+        data = filehandle.read()
+        missings = data.split(',')
+
+        print("missings: " + str(missings))
+
+        dateobjects = [self.parse_date(missingdate) for missingdate in missings]
+
+        return dateobjects
+
     # parse a date and time supplied by pvoutput.org
     # @param pvoutput_date a date in pvoutput API form
     # @param pvoutput_time a time in pvoutput API form
@@ -163,6 +247,16 @@ class PVOutputOrgConnection(object):
                                  int(pvoutput_time[0:2]),
                                  int(pvoutput_time[3:5]))
 
+    def parse_date(self, pvoutput_date):
+        """ parse a date supplied by pvoutput.org
+        @param pvoutput_date a date in pvoutput API form
+        @return a date object
+        """
+        return datetime.date(int(pvoutput_date[0:4]),
+                             int(pvoutput_date[4:6]),
+                             int(pvoutput_date[6:8]),
+                         )
+
     # format a datetime object into date and time suitable for pvoutput API
     # @param datetime a datetime object
     # @return a formatted tuple of strings, (date,time)
@@ -170,6 +264,13 @@ class PVOutputOrgConnection(object):
         formatted_date = time.strftime("%Y%m%d", datetime.timetuple())
         formatted_time = time.strftime("%H:%M", datetime.timetuple())
         return (formatted_date, formatted_time)
+
+    def format_date(self, date):
+        """ format a date object into a format suitable for the pvoutput API
+        @param date a date object
+        @return a formatted date
+        """
+        return date.strftime("%Y%m%d")
 
     # returns true if a donation has been made for the apikey being used
     # @fixme this should pull its return value from the config
@@ -185,3 +286,11 @@ class PVOutputOrgConnection(object):
         if self.donation_mode():
             return 90
         return 14
+
+    def batchstatus_count_accepted_by_api(self):
+        """ number of statuses allowed in a batch
+        @return the number of statuses allowed in a batch
+        """
+        if self.donation_mode():
+            return 100
+        return 30

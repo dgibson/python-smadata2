@@ -52,7 +52,7 @@ class PVOutputUploader(object):
 
             last_total_production = total_production
 
-            if len(batch) == self.batch_length_max():
+            if len(batch) == self.pvoutput.batchstatus_count_accepted_by_api():
                 if havesent:
                     # if we do *not* wait, other requests can get served
                     # first.  The API wants stuff *in order*!  Sucks.
@@ -183,7 +183,7 @@ class PVOutputUploader(object):
         #     cumulative = prod[1]
         #     print("timestamp=%s cumulative=%s" % (timestamp, cumulative))
 
-        theirdata = self.pvoutput.getstatus(self.system.pvoutput_sid, date, None, None)
+        theirdata = self.pvoutput.getstatusx(self.system.pvoutput_sid, date, None, None)
         # for output in theirdata:
         #     print("date=%s time=%s production=%s" \
         #            % (output[0], output[1], output[2]))
@@ -311,3 +311,29 @@ class PVOutputUploader(object):
             somedate = self.pvoutput.parse_date_and_time(date, '00:00')
             self.reconcile_date(somedate)
 
+
+    def addoutput(self,somedate,somedelta):
+        """ return system status at some time
+        @param firstdate: first date to show
+        @param firsttime first time to show
+        @param count number of datapoints to show
+        """
+        return self.pvoutput.addoutput(self.system.pvoutput_sid,
+                                       somedate,somedelta)
+
+    def getmissing(self,fromdate,todate):
+        """ return dates missing totals in pvoutput.org
+        @param fromdate: first date to show
+        @param todate: last date to show
+        """
+        return self.pvoutput.getmissing(self.system.pvoutput_sid,
+                                        fromdate,todate)
+
+    def getstatus(self,firstdatetime,count):
+        """ return system status at some time
+        @param firstdate: first date to show
+        @param firsttime first time to show
+        @param count number of datapoints to show
+        """
+        return self.pvoutput.getstatus(self.system.pvoutput_sid,
+                                       firstdatetime,count)

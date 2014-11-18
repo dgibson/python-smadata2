@@ -1,0 +1,82 @@
+#! /usr/bin/env python
+#
+# sma2-download - Download historic generation info from SMA inverters
+# Copyright (C) 2014 David Gibson <david@gibson.dropbear.id.au>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License along
+# with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+from __future__ import print_function
+
+import datetime
+import time
+
+import smadata2.protocol
+import smadata2.util
+import smadata2.config
+import smadata2.db
+
+config = smadata2.config.SMAData2Config()
+#db = config.database()
+
+for system in config.systems():
+    for inv in system.inverters():
+        print("%s (SN: %s)" % (inv.name, inv.serial))
+
+        # lasttime = db.get_last_historic(inv.serial)
+        # if lasttime is None:
+        #     lasttime = inv.starttime
+        lasttime = time.mktime(datetime.datetime(2012,1,1).timetuple())
+        lasttime = time.mktime(datetime.datetime(2014,6,15).timetuple())
+
+        now = int(time.time())
+
+        totime = now
+        totime = time.mktime(datetime.datetime(2014,7,31).timetuple()) 
+        # range does *not* include totime! FIXME
+
+        print("Retrieving data from %s to %s"
+              % (smadata2.util.format_date(lasttime),
+                 smadata2.util.format_date(totime)))
+
+        mypvoutput = config.pvoutput_connect()
+    
+        sma = inv.connect_and_logon()
+
+        data = sma.historic_daily(int(lasttime), int(totime))
+        if len(data):
+            print("Downloaded %d observations from %s to %s"
+                  % (len(data), smadata2.util.format_time(data[0][0]),
+                     smadata2.util.format_time(data[-1][0])))
+            last  = None
+            for datum in data:
+                if datum[1] == 4294967295:
+                    continue
+                print(datum)
+                if last is not None:
+                    delta = datum[1] - last[1]
+                    date = datetime.datetime.utcfromtimestamp(datum[0])
+                    print(str(date) + " " + str(delta))
+                    mypvoutput.addoutput(system.pvoutput_sid,date,delta)
+                last = datum
+                    
+        else:
+            print("No new data")
+
+        # for timestamp, total in data:
+        #     if total == 0xffffffff:
+        #         continue
+        #     db.add_historic(inv.serial, timestamp, total)
+
+        # db.commit()
