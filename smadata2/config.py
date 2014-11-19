@@ -94,7 +94,10 @@ DEFAULT_START_TIME = "2010-01-01"
 
 class SMAData2Config(object):
     def __init__(self, configfile=DEFAULT_CONFIG_FILE):
-        f = open(configfile, "r")
+        if isinstance(configfile, str):
+            f = open(configfile, "r")
+        else:
+            f = configfile
 
         alljson = json.load(f)
 
