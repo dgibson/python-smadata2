@@ -202,9 +202,8 @@ class SMADatabaseSQLiteV0(SMADatabase):
         r = c.fetchone()
         if r is None:
             c = self.conn.cursor()
-            c.execute("INSERT INTO pvoutput(last_datetime_uploaded) "
-                      "VALUES ( ? )",
-                      (sid))
+            c.execute("INSERT INTO pvoutput(sid) VALUES ( ? )",
+                      (sid,))
             self.commit()
 
     def pvoutput_set_last_datetime_uploaded(self, sid, value):
