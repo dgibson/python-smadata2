@@ -10,4 +10,5 @@ clean:
 	rm -f *~ *.pyc
 	rm -f smadata2/*~ smadata2/*.pyc
 	rm -f tests/*~ tests/*.pyc
+	rm -f __testdb__*
 	rm -f .coverage

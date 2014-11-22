@@ -20,6 +20,7 @@
 from __future__ import print_function
 
 import sys
+import os.path
 import time
 import sqlite3
 import datetime
@@ -49,6 +50,28 @@ class SMADatabase(object):
 class SMADatabaseSQLiteV0(SMADatabase):
     DB_MAGIC = 0x71534d41
     DB_VERSION = 0
+
+    @classmethod
+    def create(cls, filename):
+        # This is a convenience / sanity check
+        # It's racy, so it's not secure or foolproof
+        if os.path.exists(filename):
+            raise ValueError("Database file %s already exists" % filename)
+
+        conn = sqlite3.connect(filename)
+        conn.execute("""
+CREATE TABLE generation (inverter_serial INTEGER,
+                         timestamp INTEGER,
+                         total_yield INTEGER,
+                         PRIMARY KEY (inverter_serial, timestamp))""")
+        conn.execute("CREATE TABLE schema (magic INTEGER, version INTEGER)")
+        conn.execute("""CREATE TABLE pvoutput (sid STRING,
+                                               last_datetime_uploaded INTEGER)""")
+        conn.execute("INSERT INTO schema (magic, version) VALUES (?, ?)",
+                     (cls.DB_MAGIC, cls.DB_VERSION))
+        conn.commit()
+        del conn
+        return cls(filename)
 
     def connect(self, filename):
         return sqlite3.connect(filename)
