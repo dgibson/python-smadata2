@@ -86,15 +86,6 @@ CREATE TABLE generation (inverter_serial INTEGER,
                 raise Error("Bad version table")
         return magic, version
 
-    def get_last_entry(self, serial):
-        c = self.conn.cursor()
-        c.execute("SELECT timestamp,total_yield "
-                  "FROM generation "
-                  "WHERE inverter_serial = ? "
-                  "ORDER BY timestamp DESC LIMIT 1", (serial,))
-        r = c.fetchone()
-        return r
-
     # return midnights for each day in the database
     # @param serial the inverter seial number to retrieve midnights for
     # @return all midnights in database as datetime objects
@@ -165,15 +156,6 @@ CREATE TABLE generation (inverter_serial INTEGER,
         r = c.fetchall()
         if len(r) == 0:
             return None
-        return r
-
-    def get_last_entries(self, serial, count):
-        c = self.conn.cursor()
-        c.execute("SELECT timestamp,total_yield "
-                  "FROM generation "
-                  "WHERE inverter_serial = ? "
-                  "ORDER BY timestamp DESC LIMIT ?", (serial, str(count)))
-        r = c.fetchall()
         return r
 
     # def get_entries_younger_than(self, serial, entry):
