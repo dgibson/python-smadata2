@@ -1,25 +1,58 @@
 #! /usr/bin/env python
 
-import os
+import StringIO
+import os.path
+import unittest
 
 from nose.tools import *
-from smadata2.db import *
+
+import smadata2.config
+import smadata2.db
+
+class BaseTestConfig(object):
+    def setUp(self):
+        self.c = smadata2.config.SMAData2Config(StringIO.StringIO(self.json))
+
+
+class TestMinimalConfig(BaseTestConfig):
+    json = "{}"
+
+    def test_dbname(self):
+        assert_equals(self.c.dbname, os.path.expanduser("~/.btsmadb.v0.sqlite"))
+
+    def test_systems(self):
+        assert_equals(self.c.systems(), [])
+
+
+class TestConfigWithPVOutput(BaseTestConfig):
+    json = """
+    {
+        "pvoutput.org": {
+        }
+    }"""
+
+    def test_server(self):
+        assert_equals(self.c.pvoutput_server, "pvoutput.org")
+
+    def test_apikey(self):
+        assert_equals(self.c.pvoutput_apikey, None)
+
 
 class TestDB(object):
     def setUp(self):
         self.dbname = "__testdb__smadata2_%s_.sqlite" % self.__class__.__name__
-        self.db = SMADatabaseSQLiteV0.create(self.dbname)
+        self.db = smadata2.db.SMADatabaseSQLiteV0.create(self.dbname)
 
     def tearDown(self):
         os.remove(self.dbname)
 
     def test_trivial(self):
-        assert isinstance(self.db, SMADatabaseSQLiteV0)
+        assert isinstance(self.db, smadata2.db.SMADatabaseSQLiteV0)
 
     def test_magic(self):
         magic, version = self.db.get_magic()
-        assert_equals(magic, SMADatabaseSQLiteV0.DB_MAGIC)
-        assert_equals(version, SMADatabaseSQLiteV0.DB_VERSION)
+        assert_equals(magic, smadata2.db.SMADatabaseSQLiteV0.DB_MAGIC)
+        assert_equals(version, smadata2.db.SMADatabaseSQLiteV0.DB_VERSION)
 
     def test_add_get_historic(self):
         # Serial is defined as INTEGER, but we abuse the fact that
