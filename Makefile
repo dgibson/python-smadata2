@@ -1,5 +1,5 @@
 NOSE = nosetests
-NOSEFLAGS =
+NOSEFLAGS = --with-coverage --cover-package=smadata2
 
 all: check
 
@@ -10,3 +10,4 @@ clean:
 	rm -f *~ *.pyc
 	rm -f smadata2/*~ smadata2/*.pyc
 	rm -f tests/*~ tests/*.pyc
+	rm -f .coverage
