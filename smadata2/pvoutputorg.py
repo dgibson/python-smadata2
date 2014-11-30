@@ -34,20 +34,23 @@ class Error(Exception):
 
 # /home/pbarker/.pvoutput.org.rc
 class PVOutputOrgConnection(object):
-    def __init__(self, server, apikey):
+    def __init__(self, server, apikey, sid):
         if not server:
             raise ValueError("Bad or missing server")
 
         if not apikey:
             raise ValueError("Bad or missing apikey")
 
+        if not sid:
+            raise ValueError("Bad or missing sid")
+
         self.hostnameport = server
         self.apikey = apikey
+        self.sid = sid
 
     # 
-    def make_request(self, sid, scriptpath, data):
+    def make_request(self, scriptpath, data):
         """ call a script on the server configured in the config file
-        @param sid pvoutput.org system id
         @param scriptpath path to script on server
         @param data content of request
         @return filehandle-ish thing containing response from server
@@ -56,7 +59,7 @@ class PVOutputOrgConnection(object):
 
         req = urllib2.Request(url=url, data=data)
         req.add_header("X-Pvoutput-Apikey", self.apikey)
-        req.add_header("X-Pvoutput-SystemId", sid)
+        req.add_header("X-Pvoutput-SystemId", self.sid)
         filehandle = urllib2.urlopen(req)
         responsecode = filehandle.getcode()
         if responsecode != 200:
@@ -64,9 +67,8 @@ class PVOutputOrgConnection(object):
                         % (str(responsecode), self.hostnameport))
         return filehandle
 
-    def addoutput(self, sid, somedate, somedelta):
+    def addoutput(self, somedate, somedelta):
         """ add a daily output to pvoutput
-        @param sid a pvoutput system id
         @param date to add output for
         @param delta production for this day
         @return None
@@ -77,17 +79,16 @@ class PVOutputOrgConnection(object):
             "d": self.format_date(somedate),
             "g": somedelta,
         })
-        filehandle = self.make_request(sid, "/service/r2/addoutput.jsp", data)
+        filehandle = self.make_request("/service/r2/addoutput.jsp", data)
         content = filehandle.read()
         print("Server said: " + content)
 
     # add a single data point to the server
-    # @param sid a pvoutput system id
     # @param timestamp Unix timestamp to add the data for
     # @param total_production total system production at this timestamp
     # @return None
     # @fixme check API response
-    def addstatus(self, sid, timestamp, total_production):
+    def addstatus(self, timestamp, total_production):
         print("addstatus")
 
         data = urllib.urlencode({
@@ -96,14 +97,13 @@ class PVOutputOrgConnection(object):
             "c1": 1,
             "v1": total_production,
         })
-        self.make_request(sid, "/service/r2/addstatus.jsp", data)
+        self.make_request("/service/r2/addstatus.jsp", data)
 
     # upload a whole bunch of statuses at the same time
-    # @param sid a a system ID
     # @param batch a list of lists to upload [[ timestamp,totalprod ], ...]
     # @return None
     # @fixme should check server response rather than just printing...
-    def addbatchstatus(self, sid, batch):
+    def addbatchstatus(self, batch):
         new = []
         for prodinfo in batch:
             timestamp, production = prodinfo
@@ -121,27 +121,25 @@ class PVOutputOrgConnection(object):
             "data": productiondata,
             "c1": 1
         })
-        filehandle = self.make_request(sid, "/service/r2/addbatchstatus.jsp",
+        filehandle = self.make_request("/service/r2/addbatchstatus.jsp",
                                        data)
         content = filehandle.read()
         print("Content returned from server: %s" % content)
 
     # delete a day's status
-    # @param sid a pvoutput system id
     # @param date a datetime object for the first time to return (?!)
     # @return None
-    def deletestatus(self, sid, date):
+    def deletestatus(self, date):
         formatted_date, formatted_time = self.format_date_and_time(date)
         opts = {
             'd': formatted_date,
             # 'h': 1,
         }
         data = urllib.urlencode(opts)
-        self.make_request(sid, "/service/r2/deletestatus.jsp", data)
+        self.make_request("/service/r2/deletestatus.jsp", data)
 
-    def getstatusx(self, sid, date, timefrom, timeto):
+    def getstatusx(self, date, timefrom, timeto):
         """ retrieve data for a time period - always from midnight ATM
-        @param sid a pvoutput system id
         @param date a datetime object for the first time to return (?!)
         @return a list of lists
         @fixme this is just dodgy, dodgy, dodgy
@@ -159,8 +157,7 @@ class PVOutputOrgConnection(object):
                 opts['to'] = timeto
 
         request = urllib.urlencode(opts)
-        filehandle = self.make_request(sid, '/service/r2/getstatus.jsp',
-                                       request)
+        filehandle = self.make_request('/service/r2/getstatus.jsp', request)
         data = filehandle.read()
         outputs = data.split(';')
         ret = []
@@ -172,12 +169,11 @@ class PVOutputOrgConnection(object):
         return ret
 
     # retrieve data for a time period - always from midnight ATM
-    # @param sid a pvoutput system id
     # @param fromdatetime first datetime to return status for
     # @param number of entries to return
     # @return a list of lists
     # @fixme this is just dodgy, dodgy, dodgy
-    def getstatus(self, sid, fromdatetime, count):
+    def getstatus(self, fromdatetime, count):
         formatted_date, formatted_time = self.format_date_and_time(fromdatetime)
         opts = {
             'd': formatted_date,
@@ -192,8 +188,7 @@ class PVOutputOrgConnection(object):
         #         opts['to'] = timeto
 
         request = urllib.urlencode(opts)
-        filehandle = self.make_request(sid, '/service/r2/getstatus.jsp',
-                                       request)
+        filehandle = self.make_request('/service/r2/getstatus.jsp', request)
         data = filehandle.read()
         outputs = data.split(';')
         ret = []
@@ -205,7 +200,7 @@ class PVOutputOrgConnection(object):
         return ret
 
     # 
-    def getmissing(self,sid,datefrom,dateto):
+    def getmissing(self,datefrom,dateto):
         """ Get Missing service retrieves a list of output dates missing 
         @param datefrom first date to check
         @param dateto last date to check
@@ -225,8 +220,7 @@ class PVOutputOrgConnection(object):
         }
 
         request = urllib.urlencode(opts)
-        filehandle = self.make_request(sid, '/service/r2/getmissing.jsp',
-                                       request)
+        filehandle = self.make_request('/service/r2/getmissing.jsp', request)
         data = filehandle.read()
         missings = data.split(',')
 
