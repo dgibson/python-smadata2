@@ -574,6 +574,7 @@ def cmd_historic(sma, args):
         print("%s: Total generation %d Wh"
               % (format_time(timestamp), val))
 
+
 def cmd_historic_daily(sma, args):
     fromtime = ptime("2013-01-01")
     totime = int(time.time())  # Now

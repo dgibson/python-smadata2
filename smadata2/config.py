@@ -123,7 +123,7 @@ class SMAData2Config(object):
     def systems(self):
         return self.syslist
 
-    def pvoutput_connect(self,system):
+    def pvoutput_connect(self, system):
         return pvoutputorg.API("http://" + self.pvoutput_server,
                                self.pvoutput_apikey, system.pvoutput_sid)
 

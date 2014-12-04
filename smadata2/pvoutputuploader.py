@@ -1,6 +1,7 @@
 import time
 import datetime
 
+
 class PVOutputUploader(object):
     def __init__(self, db, system, pvoutput):
         self.verbose = False
@@ -77,7 +78,7 @@ class PVOutputUploader(object):
     # @fixme change this to screw with statuses in-place instead
     def trim_unwanted_unuploaded_statuses(self, last_datetime, statuses):
         skipping = False
-        last = [None,last_datetime] # *cough*
+        last = [None, last_datetime]    # *cough*
         ret = []
         while statuses:
             this = statuses.pop(0)
@@ -99,11 +100,11 @@ class PVOutputUploader(object):
             last = this
 
         # do not upload any final status where not all inverters have reported
-        if len(ret): # this is untested - I only have one inverter
+        if len(ret):                    # untested - I only have one inverter
             invertercount = len(self.system.inverters())
             while len(ret):
                 if ret[-1][2] == invertercount:
-                    break;
+                    break
                 ret.pop()
 
         return ret
@@ -117,10 +118,12 @@ class PVOutputUploader(object):
             last_datetime = self.db.pvoutput_get_last_datetime_uploaded(sid)
 
         print("last_datetime=%d" % last_datetime)
-        prods = self.db.get_productions_younger_than(self.system.inverters(), last_datetime)
+        prods = self.db.get_productions_younger_than(self.system.inverters(),
+                                                     last_datetime)
         print("prods")
         print len(prods)
-        new_prods = self.trim_unwanted_unuploaded_statuses(last_datetime,prods)
+        new_prods = self.trim_unwanted_unuploaded_statuses(last_datetime,
+                                                           prods)
         print("new_prods")
         print len(new_prods)
         prods = new_prods
@@ -162,7 +165,8 @@ class PVOutputUploader(object):
     # @note The day *must be over* for this not to screw you over.
     # @note no way to tell if all inverters have reported in....
     def upload_statuses_for_day(self, day):
-        entries = self.db.get_datapoint_totals_for_day(self.system.inverters(), day)
+        entries = self.db.get_datapoint_totals_for_day(self.system.inverters(),
+                                                       day)
         self.trim_unwanted_daily_datapoints(entries)
         self.send_production(entries)
 
@@ -176,7 +180,8 @@ class PVOutputUploader(object):
     # @param date a datetime object - midnight, please
     # @fixme take a... you know... date instead of a datetime?
     def reconcile_date(self, date):
-        mydata = self.db.get_datapoint_totals_for_day(self.system.inverters(), date)
+        mydata = self.db.get_datapoint_totals_for_day(self.system.inverters(),
+                                                      date)
 
         # for prod in mydata:
         #     timestamp = prod[0]
@@ -248,7 +253,7 @@ class PVOutputUploader(object):
                   % len(theirdata))
             for output in theirdata:
                 self.debug("their extra: date=%s time=%s production=%s"
-                             % (output[0], output[1], output[2]))
+                           % (output[0], output[1], output[2]))
 
         printed_mydata_warning_once = False
         if mydata:
@@ -261,7 +266,7 @@ class PVOutputUploader(object):
                               % len(mydata))
                         printed_mydata_warning_once = True
                     self.debug("my extra: timestamp=%s cumulative=%s"
-                                 % (mine[0], my_delta))
+                               % (mine[0], my_delta))
 
     # reconcile all data in my database against what is on pvoutput.org
     def reconcile(self):
@@ -286,9 +291,9 @@ class PVOutputUploader(object):
         datapoints = self.db.get_entries(self.system.inverters(), timestamp)
         sum = 0
         for datapoint in datapoints:
-            print("Inverter (%s): %d" % (datapoint[2],datapoint[1]))
+            print("Inverter (%s): %d" % (datapoint[2], datapoint[1]))
             sum += datapoint[1]
-        print("System (%s): %d" % (self.system.pvoutput_sid,sum))
+        print("System (%s): %d" % (self.system.pvoutput_sid, sum))
 
     # dodgy entry point to fix data already on server.
     # @param date date to work with in pvoutput format e.g. "20140731"
@@ -311,26 +316,25 @@ class PVOutputUploader(object):
             somedate = self.pvoutput.parse_date_and_time(date, '00:00')
             self.reconcile_date(somedate)
 
-
-    def addoutput(self,somedate,somedelta):
+    def addoutput(self, somedate, somedelta):
         """ return system status at some time
         @param firstdate: first date to show
         @param firsttime first time to show
         @param count number of datapoints to show
         """
-        return self.pvoutput.addoutput(somedate,somedelta)
+        return self.pvoutput.addoutput(somedate, somedelta)
 
-    def getmissing(self,fromdate,todate):
+    def getmissing(self, fromdate, todate):
         """ return dates missing totals in pvoutput.org
         @param fromdate: first date to show
         @param todate: last date to show
         """
-        return self.pvoutput.getmissing(fromdate,todate)
+        return self.pvoutput.getmissing(fromdate, todate)
 
-    def getstatus(self,firstdatetime,count):
+    def getstatus(self, firstdatetime, count):
         """ return system status at some time
         @param firstdate: first date to show
         @param firsttime first time to show
         @param count number of datapoints to show
         """
-        return self.pvoutput.getstatus(firstdatetime,count)
+        return self.pvoutput.getstatus(firstdatetime, count)

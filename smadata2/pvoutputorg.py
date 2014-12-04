@@ -209,9 +209,8 @@ class API(object):
                         int(outputentries[2])])
         return ret
 
-    # 
-    def getmissing(self,datefrom,dateto):
-        """ Get Missing service retrieves a list of output dates missing 
+    def getmissing(self, datefrom, dateto):
+        """ Get Missing service retrieves a list of output dates missing
         @param datefrom first date to check
         @param dateto last date to check
         @return a list of date objects
@@ -232,7 +231,8 @@ class API(object):
 
         print("missings: " + str(missings))
 
-        dateobjects = [self.parse_date(missingdate) for missingdate in missings]
+        dateobjects = [self.parse_date(missingdate)
+                       for missingdate in missings]
 
         return dateobjects
 
@@ -254,8 +254,7 @@ class API(object):
         """
         return datetime.date(int(pvoutput_date[0:4]),
                              int(pvoutput_date[4:6]),
-                             int(pvoutput_date[6:8]),
-                         )
+                             int(pvoutput_date[6:8]))
 
     # format a datetime object into date and time suitable for pvoutput API
     # @param datetime a datetime object

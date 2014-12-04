@@ -31,6 +31,7 @@ import smadata2.config
 import smadata2.db
 import smadata2.pvoutputuploader
 
+
 def getmissing(args):
     config = smadata2.config.SMAData2Config()
     db = config.database()
@@ -40,10 +41,12 @@ def getmissing(args):
         uploader = smadata2.pvoutputuploader.PVOutputUploader(db, system,
                                                               mypvoutput)
         uploader.setVerbose(1)
-        
-        allmissing = uploader.getmissing(args.fromdate.somedate, args.todate.somedate)
+
+        allmissing = uploader.getmissing(args.fromdate.somedate,
+                                         args.todate.somedate)
         for missing in allmissing:
             print(missing)
+
 
 def getstatus(args):
     config = smadata2.config.SMAData2Config()
@@ -55,13 +58,14 @@ def getstatus(args):
                                                               mypvoutput)
         uploader.setVerbose(1)
         if args.fromdate:
-            fromdatetime = args.fromdate.somedatetime;
+            fromdatetime = args.fromdate.somedatetime
         else:
             fromdatetime = None
 
         allstatus = uploader.getstatus(fromdatetime, 1)
         for status in allstatus:
             print(status)
+
 
 def upload_unuploaded(args):
     config = smadata2.config.SMAData2Config()
@@ -72,9 +76,10 @@ def upload_unuploaded(args):
         uploader = smadata2.pvoutputuploader.PVOutputUploader(db, system,
                                                               mypvoutput)
         uploader.setVerbose(1)
-        
+
         print("Uploading unuploaded statuses for %s" % system)
         uploader.upload_unuploaded_statuses()
+
 
 def addoutput(args):
     config = smadata2.config.SMAData2Config()
@@ -85,7 +90,7 @@ def addoutput(args):
                                                           args.sid.system,
                                                           mypvoutput)
     uploader.setVerbose(1)
-        
+
     print("Uploading unuploaded statuses for %s" % args.sid.system)
     uploader.addoutput(args.fordate.somedate, args.generated)
 
@@ -97,12 +102,14 @@ class dateType():
     def __call__(self):
         print("__called__ called on dateType?!")
 
+
 class datetimeType():
     def __init__(self, param):
         self.somedatetime = datetime.datetime.strptime(param, '%Y%m%d %H:%M')
 
     def __call__(self):
         print("__called__ called on datetimeType?!")
+
 
 class sidType():
     def __init__(self, param):
@@ -117,6 +124,7 @@ class sidType():
 
     def __call__(self):
         print("__called__ called on datetimeType?!")
+
 
 parser = argparse.ArgumentParser(description='Work with pvoutput and smadata')
 subparsers = parser.add_subparsers()
@@ -157,7 +165,8 @@ db = config.database()
 
 for system in config.systems():
     mypvoutput = config.pvoutput_connect(system)
-    uploader = smadata2.pvoutputuploader.PVOutputUploader(db, system, mypvoutput)
+    uploader = smadata2.pvoutputuploader.PVOutputUploader(db, system,
+                                                          mypvoutput)
     uploader.setVerbose(1)
 
     # stuff below this line is useful for fixing data on the server - and

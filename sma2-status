@@ -34,7 +34,9 @@ for system in config.systems():
         sma = inv.connect_and_logon()
 
         dtime, daily = sma.daily_yield()
-        print("\t\tDaily generation at %s:\t%d Wh" % (format_time(dtime), daily))
+        print("\t\tDaily generation at %s:\t%d Wh"
+              % (format_time(dtime), daily))
 
         ttime, total = sma.total_yield()
-        print("\t\tTotal generation at %s:\t%d Wh" % (format_time(ttime), total))
+        print("\t\tTotal generation at %s:\t%d Wh"
+              % (format_time(ttime), total))

@@ -1,10 +1,19 @@
 NOSE = nosetests
+PEP8 = pep8
+
 NOSEFLAGS = --with-coverage --cover-package=smadata2
+
+SCRIPTS = sma2-download sma2-explore sma2-status \
+	sma2-upload-to-pvoutputorg sma2-push-daily-to-pvoutput
+PYFILES = $(SCRIPTS) $(wildcard smadata2/*.py)
 
 all: check
 
 check:
 	$(NOSE) $(NOSEFLAGS)
+
+pep8:
+	$(PEP8) $(PYFILES)
 
 clean:
 	rm -f *~ *.pyc

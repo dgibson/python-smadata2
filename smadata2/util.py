@@ -32,5 +32,6 @@ def format_time(timestamp):
     st = time.localtime(timestamp)
     return time.strftime("%a, %d %b %Y %H:%M:%S %Z", st)
 
+
 def format_date(date):
     return time.strftime("%a, %d %b %Y", time.localtime(date))

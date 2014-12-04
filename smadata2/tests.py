@@ -11,6 +11,7 @@ from nose.tools import *
 import smadata2.config
 import smadata2.db
 
+
 class BaseTestConfig(object):
     def setUp(self):
         self.c = smadata2.config.SMAData2Config(StringIO.StringIO(self.json))
@@ -20,7 +21,8 @@ class TestMinimalConfig(BaseTestConfig):
     json = "{}"
 
     def test_dbname(self):
-        assert_equals(self.c.dbname, os.path.expanduser("~/.btsmadb.v0.sqlite"))
+        assert_equals(self.c.dbname,
+                      os.path.expanduser("~/.btsmadb.v0.sqlite"))
 
     def test_systems(self):
         assert_equals(self.c.systems(), [])
@@ -143,7 +145,7 @@ class TestConfigBareInverter(BaseTestConfig):
         xtime = time.mktime(datetime.datetime(2000, 1, 1).timetuple())
         assert_equals(inv.starttime, xtime)
         assert isinstance(str(inv), str)
-    
+
 
 class TestDB(object):
     def setUp(self):
@@ -187,7 +189,7 @@ class TestDB(object):
 
         last = self.db.get_last_historic(serial)
         assert last is None
-        
+
     def test_get_last_historic(self):
         serial = "__TEST__"
 

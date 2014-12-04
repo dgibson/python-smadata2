@@ -144,7 +144,7 @@ class SMAData2CLI(SMAData2BluetoothConnection):
         elif (type_ in [OTYPE_PPP, OTYPE_PPP2]):
             dump_ppp_raw("Rx<         ", payload)
         super(SMAData2CLI, self).rx_outer(from_, to_,
-                                                 type_, payload)
+                                          type_, payload)
 
     def rx_ppp(self, from_, protocol, payload):
         dump_ppp("Rx<         ", protocol, payload)
@@ -157,10 +157,10 @@ class SMAData2CLI(SMAData2BluetoothConnection):
                   type_, subtype, arg1, arg2, extra,
                   response, error, pktcount, first)
         super(SMAData2CLI, self).rx_6560(from2, to2, a2, b1, b2, c1, c2,
-                                                tag, type_, subtype,
-                                                arg1, arg2,
-                                                extra, response, error,
-                                                pktcount, first)
+                                         tag, type_, subtype,
+                                         arg1, arg2,
+                                         extra, response, error,
+                                         pktcount, first)
 
     def tx_raw(self, pkt):
         super(SMAData2CLI, self).tx_raw(pkt)
@@ -168,7 +168,7 @@ class SMAData2CLI(SMAData2BluetoothConnection):
 
     def tx_outer(self, from_, to_, type_, payload):
         super(SMAData2CLI, self).tx_outer(from_, to_,
-                                                 type_, payload)
+                                          type_, payload)
         dump_outer("Tx>     ", from_, to_, type_, payload)
         if type_ == OTYPE_GETVAR:
             varid = bytes2int(payload[:2])
@@ -182,9 +182,9 @@ class SMAData2CLI(SMAData2BluetoothConnection):
                 type_, subtype, arg1, arg2, extra=bytearray(),
                 response=False, error=0, pktcount=0, first=True):
         super(SMAData2CLI, self).tx_6560(from2, to2, a2, b1, b2, c1, c2,
-                                                tag, type_, subtype,
-                                                arg1, arg2, extra, response,
-                                                error, pktcount, first)
+                                         tag, type_, subtype,
+                                         arg1, arg2, extra, response,
+                                         error, pktcount, first)
         dump_6560("Tx>             ", from2, to2, a2, b1, b2, c1, c2, tag,
                   type_, subtype, arg1, arg2, extra,
                   response, error, pktcount, first)
