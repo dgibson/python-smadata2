@@ -34,9 +34,9 @@ class API(object):
 
     API documentation can be found at http://pvoutput.org/help.html#api-spec"""
 
-    def __init__(self, server, apikey, sid):
-        if not server:
-            raise ValueError("Bad or missing server")
+    def __init__(self, baseurl, apikey, sid):
+        if not baseurl:
+            raise ValueError("Bad or missing base URL")
 
         if not apikey:
             raise ValueError("Bad or missing apikey")
@@ -44,7 +44,7 @@ class API(object):
         if not sid:
             raise ValueError("Bad or missing sid")
 
-        self.hostnameport = server
+        self.baseurl = baseurl
         self.apikey = apikey
         self.sid = sid
 
@@ -55,7 +55,7 @@ class API(object):
         @param data content of request
         @return filehandle-ish thing containing response from server
         """
-        url = "http://" + self.hostnameport + scriptpath
+        url = self.baseurl + scriptpath
 
         req = urllib2.Request(url=url, data=data)
         req.add_header("X-Pvoutput-Apikey", self.apikey)
@@ -63,8 +63,8 @@ class API(object):
         filehandle = urllib2.urlopen(req)
         responsecode = filehandle.getcode()
         if responsecode != 200:
-            raise Error("Bad HTTP response code (%s) from %s"
-                        % (str(responsecode), self.hostnameport))
+            raise Error("Bad HTTP response code (%d) on %s"
+                        % (reponsecode, url))
         return filehandle
 
     def addoutput(self, somedate, somedelta):
