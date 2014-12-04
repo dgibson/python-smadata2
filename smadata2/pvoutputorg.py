@@ -48,24 +48,27 @@ class API(object):
         self.apikey = apikey
         self.sid = sid
 
-    # 
-    def make_request(self, scriptpath, data):
-        """ call a script on the server configured in the config file
-        @param scriptpath path to script on server
-        @param data content of request
-        @return filehandle-ish thing containing response from server
-        """
-        url = self.baseurl + scriptpath
+    def __request(self, script, args):
+        """Invoke a specific API script
 
-        req = urllib2.Request(url=url, data=data)
+        Args:
+           script (str): The path to the script to invoke
+           args (dict): Arguments to the script
+        Returns:
+           str.  The data returned by the server
+        Raises:
+           pvoutputorg.Error
+        """
+        url = self.baseurl + script
+
+        req = urllib2.Request(url=url, data=urllib.urlencode(args))
         req.add_header("X-Pvoutput-Apikey", self.apikey)
         req.add_header("X-Pvoutput-SystemId", self.sid)
-        filehandle = urllib2.urlopen(req)
-        responsecode = filehandle.getcode()
-        if responsecode != 200:
-            raise Error("Bad HTTP response code (%d) on %s"
-                        % (reponsecode, url))
-        return filehandle
+        f = urllib2.urlopen(req)
+        code = f.getcode()
+        if code != 200:
+            raise Error("Bad HTTP response code (%d) on %s" % (code, url))
+        return f.read()
 
     def addoutput(self, somedate, somedelta):
         """ add a daily output to pvoutput
@@ -75,12 +78,10 @@ class API(object):
         @fixme check API response
         """
 
-        data = urllib.urlencode({
+        content = self.__request("/service/r2/addoutput.jsp", {
             "d": self.format_date(somedate),
             "g": somedelta,
         })
-        filehandle = self.make_request("/service/r2/addoutput.jsp", data)
-        content = filehandle.read()
         print("Server said: " + content)
 
     # add a single data point to the server
@@ -91,13 +92,12 @@ class API(object):
     def addstatus(self, timestamp, total_production):
         print("addstatus")
 
-        data = urllib.urlencode({
+        self.__request("/service/r2/addstatus.jsp", {
             "d": time.strftime("%Y%m%d", time.localtime(timestamp)),
             "t": time.strftime("%H:%M", time.localtime(timestamp)),
             "c1": 1,
             "v1": total_production,
         })
-        self.make_request("/service/r2/addstatus.jsp", data)
 
     # upload a whole bunch of statuses at the same time
     # @param batch a list of lists to upload [[ timestamp,totalprod ], ...]
@@ -117,13 +117,10 @@ class API(object):
         productiondata = ';'.join(','.join(x) for x in new)
 
         print("productiondata=" + productiondata)
-        data = urllib.urlencode({
+        content = self.__request("/service/r2/addbatchstatus.jsp", {
             "data": productiondata,
             "c1": 1
         })
-        filehandle = self.make_request("/service/r2/addbatchstatus.jsp",
-                                       data)
-        content = filehandle.read()
         print("Content returned from server: %s" % content)
 
     # delete a day's status
@@ -131,12 +128,10 @@ class API(object):
     # @return None
     def deletestatus(self, date):
         formatted_date, formatted_time = self.format_date_and_time(date)
-        opts = {
+        self.__request("/service/r2/deletestatus.jsp", {
             'd': formatted_date,
             # 'h': 1,
-        }
-        data = urllib.urlencode(opts)
-        self.make_request("/service/r2/deletestatus.jsp", data)
+        })
 
     def getstatusx(self, date, timefrom, timeto):
         """ retrieve data for a time period - always from midnight ATM
@@ -156,9 +151,7 @@ class API(object):
             if timeto is not None:
                 opts['to'] = timeto
 
-        request = urllib.urlencode(opts)
-        filehandle = self.make_request('/service/r2/getstatus.jsp', request)
-        data = filehandle.read()
+        data = self.__request('/service/r2/getstatus.jsp', opts)
         outputs = data.split(';')
         ret = []
         for output in outputs:
@@ -187,9 +180,7 @@ class API(object):
         #     if timeto is not None:
         #         opts['to'] = timeto
 
-        request = urllib.urlencode(opts)
-        filehandle = self.make_request('/service/r2/getstatus.jsp', request)
-        data = filehandle.read()
+        data = self.__request('/service/r2/getstatus.jsp', opts)
         outputs = data.split(';')
         ret = []
         for output in outputs:
@@ -214,14 +205,10 @@ class API(object):
         formatted_datefrom = self.format_date(datefrom)
         formatted_dateto = self.format_date(dateto)
 
-        opts = {
+        data = self.__request('/service/r2/getmissing.jsp', {
             'df': formatted_datefrom,
             'dt': formatted_dateto,
-        }
-
-        request = urllib.urlencode(opts)
-        filehandle = self.make_request('/service/r2/getmissing.jsp', request)
-        data = filehandle.read()
+        })
         missings = data.split(',')
 
         print("missings: " + str(missings))
