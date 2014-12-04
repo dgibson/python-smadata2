@@ -16,7 +16,7 @@ class PVOutputUploader(object):
     # send a batch of datapoints to the server
     # @param batch a two-dimension array [[ timestamp,totalprod ], ...]
     def sendbatch(self, batch):
-        self.pvoutput.addbatchstatus(self.system.pvoutput_sid, batch)
+        self.pvoutput.addbatchstatus(batch)
 
     # returns maximum datapoints the API will accept in a batch
     # @return an integer with the maximum batch length the API will accept
@@ -183,7 +183,7 @@ class PVOutputUploader(object):
         #     cumulative = prod[1]
         #     print("timestamp=%s cumulative=%s" % (timestamp, cumulative))
 
-        theirdata = self.pvoutput.getstatusx(self.system.pvoutput_sid, date, None, None)
+        theirdata = self.pvoutput.getstatusx(date, None, None)
         # for output in theirdata:
         #     print("date=%s time=%s production=%s" \
         #            % (output[0], output[1], output[2]))
@@ -298,7 +298,7 @@ class PVOutputUploader(object):
         if fix:
             print(" delete data for a specific date (%s)" % date)
             day = self.pvoutput.parse_date_and_time(date, "00:00")
-            self.pvoutput.deletestatus(self.system.pvoutput_sid, day)
+            self.pvoutput.deletestatus(day)
 
         if fix:
             print(" upload data for a specific date (%s)" % date)
@@ -318,16 +318,14 @@ class PVOutputUploader(object):
         @param firsttime first time to show
         @param count number of datapoints to show
         """
-        return self.pvoutput.addoutput(self.system.pvoutput_sid,
-                                       somedate,somedelta)
+        return self.pvoutput.addoutput(somedate,somedelta)
 
     def getmissing(self,fromdate,todate):
         """ return dates missing totals in pvoutput.org
         @param fromdate: first date to show
         @param todate: last date to show
         """
-        return self.pvoutput.getmissing(self.system.pvoutput_sid,
-                                        fromdate,todate)
+        return self.pvoutput.getmissing(fromdate,todate)
 
     def getstatus(self,firstdatetime,count):
         """ return system status at some time
@@ -335,5 +333,4 @@ class PVOutputUploader(object):
         @param firsttime first time to show
         @param count number of datapoints to show
         """
-        return self.pvoutput.getstatus(self.system.pvoutput_sid,
-                                       firstdatetime,count)
+        return self.pvoutput.getstatus(firstdatetime,count)

@@ -36,7 +36,7 @@ def getmissing(args):
     db = config.database()
 
     for system in config.systems():
-        mypvoutput = config.pvoutput_connect()
+        mypvoutput = config.pvoutput_connect(system)
         uploader = smadata2.pvoutputuploader.PVOutputUploader(db, system,
                                                               mypvoutput)
         uploader.setVerbose(1)
@@ -50,7 +50,7 @@ def getstatus(args):
     db = config.database()
 
     for system in config.systems():
-        mypvoutput = config.pvoutput_connect()
+        mypvoutput = config.pvoutput_connect(system)
         uploader = smadata2.pvoutputuploader.PVOutputUploader(db, system,
                                                               mypvoutput)
         uploader.setVerbose(1)
@@ -68,7 +68,7 @@ def upload_unuploaded(args):
     db = config.database()
 
     for system in config.systems():
-        mypvoutput = config.pvoutput_connect()
+        mypvoutput = config.pvoutput_connect(system)
         uploader = smadata2.pvoutputuploader.PVOutputUploader(db, system,
                                                               mypvoutput)
         uploader.setVerbose(1)
@@ -80,7 +80,7 @@ def addoutput(args):
     config = smadata2.config.SMAData2Config()
     db = config.database()
 
-    mypvoutput = config.pvoutput_connect()
+    mypvoutput = config.pvoutput_connect(args.sid.system)
     uploader = smadata2.pvoutputuploader.PVOutputUploader(db,
                                                           args.sid.system,
                                                           mypvoutput)
@@ -156,7 +156,7 @@ config = smadata2.config.SMAData2Config()
 db = config.database()
 
 for system in config.systems():
-    mypvoutput = config.pvoutput_connect()
+    mypvoutput = config.pvoutput_connect(system)
     uploader = smadata2.pvoutputuploader.PVOutputUploader(db, system, mypvoutput)
     uploader.setVerbose(1)
 
