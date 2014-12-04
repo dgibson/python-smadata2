@@ -3,6 +3,8 @@
 import StringIO
 import os.path
 import unittest
+import time
+import datetime
 
 from nose.tools import *
 
@@ -66,6 +68,82 @@ class TestConfigEmptySystem(BaseTestConfig):
         system = self.c.systems()[0]
         assert_equals(system.pvoutput_sid, "12345")
 
+
+class TestConfigSimpleSystem(TestConfigEmptySystem):
+    json = """
+    {
+        "pvoutput.org": {
+            "server": "pvoutput.example.com",
+            "apikey": "TESTTESTTESTTEST"
+        },
+        "systems": [
+            {
+                "name": "Test System",
+                "pvoutput-sid": "12345",
+                "inverters": [
+                    {
+                        "name": "Test Inverter",
+                        "bluetooth": "aa:bb:cc:dd:ee:ff",
+                        "serial": "TESTSERIAL",
+                        "start-time": "2000-01-01"
+                    }
+                ]
+            }
+         ]
+    }"""
+
+    def test_systems(self):
+        syslist = self.c.systems()
+        assert_equals(len(syslist), 1)
+
+    def test_inverters(self):
+        system = self.c.systems()[0]
+        invlist = system.inverters()
+        assert_equals(len(invlist), 1)
+
+    def test_inv(self):
+        system = self.c.systems()[0]
+        inv = system.inverters()[0]
+        assert_equals(inv.name, "Test Inverter")
+        assert_equals(inv.bdaddr, "aa:bb:cc:dd:ee:ff")
+        assert_equals(inv.serial, "TESTSERIAL")
+        xtime = time.mktime(datetime.datetime(2000, 1, 1).timetuple())
+        assert_equals(inv.starttime, xtime)
+        assert isinstance(str(inv), str)
+
+
+class TestConfigBareInverter(BaseTestConfig):
+    json = """
+    {
+        "pvoutput.org": {
+            "server": "pvoutput.example.com",
+            "apikey": "TESTTESTTESTTEST"
+        },
+        "inverters": [
+            {
+                "name": "Test Inverter",
+                "bluetooth": "aa:bb:cc:dd:ee:ff",
+                "serial": "TESTSERIAL",
+                "start-time": "2000-01-01"
+            }
+        ]
+    }"""
+
+    def test_inverters(self):
+        system = self.c.systems()[0]
+        invlist = system.inverters()
+        assert_equals(len(invlist), 1)
+
+    def test_inv(self):
+        system = self.c.systems()[0]
+        inv = system.inverters()[0]
+        assert_equals(inv.name, "Test Inverter")
+        assert_equals(inv.bdaddr, "aa:bb:cc:dd:ee:ff")
+        assert_equals(inv.serial, "TESTSERIAL")
+        xtime = time.mktime(datetime.datetime(2000, 1, 1).timetuple())
+        assert_equals(inv.starttime, xtime)
+        assert isinstance(str(inv), str)
+    
 
 class TestDB(object):
     def setUp(self):
