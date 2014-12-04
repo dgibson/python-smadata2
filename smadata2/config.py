@@ -126,9 +126,8 @@ class SMAData2Config(object):
         return self.syslist
 
     def pvoutput_connect(self,system):
-        return pvoutputorg.PVOutputOrgConnection(self.pvoutput_server,
-                                                 self.pvoutput_apikey,
-                                                 system.pvoutput_sid)
+        return pvoutputorg.API(self.pvoutput_server, self.pvoutput_apikey,
+                               system.pvoutput_sid)
 
     def database(self):
         return db.SMADatabaseSQLiteV0(self.dbname)

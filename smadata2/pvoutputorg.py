@@ -28,12 +28,12 @@ import datetime
 class Error(Exception):
     pass
 
-# documentation for the API is here:
-# http://pvoutput.org/help.html#api-spec
 
+class API(object):
+    """Represents the pvoutput.org web API, for a particular system
 
-# /home/pbarker/.pvoutput.org.rc
-class PVOutputOrgConnection(object):
+    API documentation can be found at http://pvoutput.org/help.html#api-spec"""
+
     def __init__(self, server, apikey, sid):
         if not server:
             raise ValueError("Bad or missing server")
