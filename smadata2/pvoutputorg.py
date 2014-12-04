@@ -19,6 +19,7 @@
 
 from __future__ import print_function
 
+import sys
 import urllib
 import urllib2
 import time
@@ -48,6 +49,8 @@ class API(object):
         self.apikey = apikey
         self.sid = sid
 
+        self.__getsystem()
+
     def __request(self, script, args):
         """Invoke a specific API script
 
@@ -69,6 +72,22 @@ class API(object):
         if code != 200:
             raise Error("Bad HTTP response code (%d) on %s" % (code, url))
         return f.read()
+
+    def __getsystem(self):
+        """Update self with information from the getsystem API call"""
+
+        data = self.__request("/service/r2/getsystem.jsp", {"donations": 1})
+        sysinfo, tarriffs, donation = data.split(";")
+
+        sysinfo = sysinfo.split(",")
+
+        self.name = sysinfo[0]
+        self.system_size = int(sysinfo[1])
+        self.donation_mode = int(donation) > 0
+
+    def __str__(self):
+        return ("SID %s: \"%s\" (%d W) [donation mode: %s]"
+                % (self.sid, self.name, self.system_size, self.donation_mode))
 
     def addoutput(self, somedate, somedelta):
         """ add a daily output to pvoutput
@@ -253,18 +272,12 @@ class API(object):
         """
         return date.strftime("%Y%m%d")
 
-    # returns true if a donation has been made for the apikey being used
-    # @fixme this should pull its return value from the config
-    # @return whether the api-key can use donation-mode
-    def donation_mode(self):
-        return True
-
     # returns the number of days ago you can set values using the batchstatus
     # script
     # @fixme rename me
     # @return number of days ago the batchstatus script will take in API
     def days_ago_accepted_by_api(self):
-        if self.donation_mode():
+        if self.donation_mode:
             return 90
         return 14
 
@@ -272,6 +285,26 @@ class API(object):
         """ number of statuses allowed in a batch
         @return the number of statuses allowed in a batch
         """
-        if self.donation_mode():
+        if self.donation_mode:
             return 100
         return 30
+
+
+def main():
+    if len(sys.argv) == 3:
+        baseurl = "http://pvoutput.org"
+        apikey = sys.argv[1]
+        sid = sys.argv[2]
+    elif len(sys.argv) == 4:
+        baseurl = sys.argv[1]
+        apikey = sys.argv[2]
+        sid = sys.argv[3]
+    else:
+        raise ValueError
+
+    api = API(baseurl, apikey, sid)
+    print(api)
+
+
+if __name__ == "__main__":
+    main()
