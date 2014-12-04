@@ -38,6 +38,35 @@ class TestConfigWithPVOutput(BaseTestConfig):
         assert_equals(self.c.pvoutput_apikey, None)
 
 
+class TestConfigEmptySystem(BaseTestConfig):
+    json = """
+    {
+        "pvoutput.org": {
+            "server": "pvoutput.example.com",
+            "apikey": "TESTTESTTESTTEST"
+        },
+        "systems": [
+            {
+                "name": "Test System",
+                "pvoutput-sid": "12345",
+                "inverters": []
+            }
+        ]
+    }"""
+
+    def test_systems(self):
+        syslist = self.c.systems()
+        assert_equals(len(syslist), 1)
+
+    def test_inverters(self):
+        system = self.c.systems()[0]
+        assert not system.inverters()
+
+    def test_pvosystem(self):
+        system = self.c.systems()[0]
+        assert_equals(system.pvoutput_sid, "12345")
+
+
 class TestDB(object):
     def setUp(self):
         self.dbname = "__testdb__smadata2_%s_.sqlite" % self.__class__.__name__
