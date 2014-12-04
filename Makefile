@@ -1,4 +1,10 @@
-all:
+NOSE = nosetests
+NOSEFLAGS =
+
+all: check
+
+check:
+	$(NOSE) $(NOSEFLAGS)
 
 clean:
 	rm -f *~ *.pyc
