@@ -31,23 +31,12 @@ class Error(Exception):
     pass
 
 
-class SMADatabase(object):
-    def __init__(self, *args):
-        self.conn = self.connect(*args)
-
-        magic, version = self.get_magic()
-        if (magic != self.DB_MAGIC) or (version != self.DB_VERSION):
-            raise Error("Incorrect database version (0x%x, %d)"
-                        % (magic, version))
-
-    def connect(self):
-        raise NotImplementedError
-
+class BaseDatabase(object):
     def get_magic(self):
         raise NotImplementedError
 
 
-class SMADatabaseSQLiteV0(SMADatabase):
+class SQLiteDatabase(BaseDatabase):
     DB_MAGIC = 0x71534d41
     DB_VERSION = 0
 
@@ -73,8 +62,15 @@ CREATE TABLE generation (inverter_serial INTEGER,
         del conn
         return cls(filename)
 
-    def connect(self, filename):
-        return sqlite3.connect(filename)
+    def __init__(self, filename):
+        super(SQLiteDatabase, self).__init__()
+
+        self.conn = sqlite3.connect(filename)
+
+        magic, version = self.get_magic()
+        if (magic != self.DB_MAGIC) or (version != self.DB_VERSION):
+            raise Error("Incorrect database version (0x%x, %d)"
+                        % (magic, version))
 
     def get_magic(self):
         c = self.conn.cursor()
@@ -242,5 +238,24 @@ CREATE TABLE generation (inverter_serial INTEGER,
         self.conn.commit()
 
 
-if __name__ == '__main__':
-    db = SMADatabaseSQLiteV0(sys.argv[1])
+class MockDatabase(BaseDatabase):
+    def __init__(self):
+        super(MockDatabase, self).__init__()
+        self.historic = set()
+
+    def add_historic(self, serial, timestamp, total_yield):
+        self.historic.add((serial, timestamp, total_yield))
+
+    def get_one_historic(self, serial, timestamp):
+        for s, t, y in self.historic:
+            if (s == serial) and (t == timestamp):
+                return y
+        return None
+
+    def get_last_historic(self, serial):
+        stamps = set(t for s, t, y in self.historic)
+        if stamps:
+            return max(stamps)
+        else:
+            return None
+

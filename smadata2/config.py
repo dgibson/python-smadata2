@@ -128,7 +128,7 @@ class SMAData2Config(object):
                                self.pvoutput_apikey, system.pvoutput_sid)
 
     def database(self):
-        return db.SMADatabaseSQLiteV0(self.dbname)
+        return db.SQLiteDatabase(self.dbname)
 
 
 if __name__ == '__main__':

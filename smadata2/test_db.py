@@ -11,21 +11,12 @@ from nose.tools import *
 import smadata2.db
 
 
-class TestDB(object):
+class BaseDB(object):
     def setUp(self):
-        self.dbname = "__testdb__smadata2_%s_.sqlite" % self.__class__.__name__
-        self.db = smadata2.db.SMADatabaseSQLiteV0.create(self.dbname)
-
-    def tearDown(self):
-        os.remove(self.dbname)
+        pass
 
     def test_trivial(self):
-        assert isinstance(self.db, smadata2.db.SMADatabaseSQLiteV0)
-
-    def test_magic(self):
-        magic, version = self.db.get_magic()
-        assert_equals(magic, smadata2.db.SMADatabaseSQLiteV0.DB_MAGIC)
-        assert_equals(version, smadata2.db.SMADatabaseSQLiteV0.DB_VERSION)
+        assert isinstance(self.db, smadata2.db.BaseDatabase)
 
     def test_add_get_historic(self):
         # Serial is defined as INTEGER, but we abuse the fact that
@@ -70,6 +61,27 @@ class TestDB(object):
         assert_equals(self.db.get_last_historic(serial), 3600)
 
 
+class TestDBMock(BaseDB):
+    def setUp(self):
+        super(TestDBMock, self).setUp()
+        self.db = smadata2.db.MockDatabase()
+
+
+class TestDBSQLite(BaseDB):
+    def setUp(self):
+        super(TestDBSQLite, self).setUp()
+        self.dbname = "__testdb__smadata2_%s_.sqlite" % self.__class__.__name__
+        self.db = smadata2.db.SQLiteDatabase.create(self.dbname)
+
+    def tearDown(self):
+        os.remove(self.dbname)
+
+    def test_magic(self):
+        magic, version = self.db.get_magic()
+        assert_equals(magic, smadata2.db.SQLiteDatabase.DB_MAGIC)
+        assert_equals(version, smadata2.db.SQLiteDatabase.DB_VERSION)
+
+
 class TestEmptyDB(object):
     def setUp(self):
         self.dbname = "__testdb__smadata2_%s_.sqlite" % self.__class__.__name__
@@ -79,4 +91,4 @@ class TestEmptyDB(object):
 
     @raises(smadata2.db.Error)
     def test_empty(self):
-        self.db = smadata2.db.SMADatabaseSQLiteV0(self.dbname)
+        self.db = smadata2.db.SQLiteDatabase(self.dbname)
