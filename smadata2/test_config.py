@@ -124,8 +124,7 @@ class TestConfigBareInverter(BaseTestConfig):
             {
                 "name": "Test Inverter",
                 "bluetooth": "aa:bb:cc:dd:ee:ff",
-                "serial": "TESTSERIAL",
-                "start-time": "2000-01-01"
+                "serial": "TESTSERIAL"
             }
         ]
     }"""
@@ -142,5 +141,5 @@ class TestConfigBareInverter(BaseTestConfig):
         assert_equals(inv.bdaddr, "aa:bb:cc:dd:ee:ff")
         assert_equals(inv.serial, "TESTSERIAL")
         xtime = time.mktime(datetime.datetime(2000, 1, 1).timetuple())
-        assert_equals(inv.starttime, xtime)
+        assert inv.starttime is None
         assert isinstance(str(inv), str)
