@@ -68,3 +68,15 @@ class TestDB(object):
 
         self.db.add_historic(serial, 2000, 0)
         assert_equals(self.db.get_last_historic(serial), 3600)
+
+
+class TestEmptyDB(object):
+    def setUp(self):
+        self.dbname = "__testdb__smadata2_%s_.sqlite" % self.__class__.__name__
+
+    def tearDown(self):
+        os.remove(self.dbname)
+
+    @raises(smadata2.db.Error)
+    def test_empty(self):
+        self.db = smadata2.db.SMADatabaseSQLiteV0(self.dbname)

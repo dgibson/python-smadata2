@@ -78,8 +78,11 @@ CREATE TABLE generation (inverter_serial INTEGER,
 
     def get_magic(self):
         c = self.conn.cursor()
-        c.execute("SELECT magic, version FROM schema;")
-        r = c.fetchone()
+        try:
+            c.execute("SELECT magic, version FROM schema;")
+            r = c.fetchone()
+        except sqlite3.OperationalError:
+            raise Error("No schema table")
         magic, version = r[0], r[1]
         if c.fetchone() is not None:
             if c.fetchone() is not None:
