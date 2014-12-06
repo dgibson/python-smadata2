@@ -100,25 +100,6 @@ CREATE TABLE generation (inverter_serial INTEGER,
         r = map(lambda x: datetime.datetime.utcfromtimestamp(x[0]), r)
         return r
 
-    # retrieve all entries for a day from the database
-    # @note this seems to get timezone stuff right :-) "a day" is a "local" day
-    # @param date a datetime object for midnight of the day you want
-    # fixed
-    def get_entries_for_day(self, inverters, start_datetime):
-        c = self.conn.cursor()
-        before_datetime = start_datetime + datetime.timedelta(days=1)
-        start_unixtime = time.mktime(start_datetime.timetuple())
-        before_unixtime = time.mktime(before_datetime.timetuple())
-        serials = ','.join(x.serial for x in inverters)
-        c.execute("SELECT timestamp,total_yield,inverter_serial "
-                  "FROM generation "
-                  "WHERE inverter_serial in  ( ? ) "
-                  "AND timestamp >= ? and timestamp < ?"
-                  "ORDER BY timestamp ASC", (serials, start_unixtime,
-                                             before_unixtime))
-        r = c.fetchall()
-        return r
-
     def get_datapoint_totals_for_day(self, inverters, start_datetime):
         c = self.conn.cursor()
         before_datetime = start_datetime + datetime.timedelta(days=1)
@@ -135,14 +116,6 @@ CREATE TABLE generation (inverter_serial INTEGER,
         r = c.fetchall()
         return r
 
-    # return last data for a particular day
-    def get_last_entry_for_day(self, serial, date):
-        c = self.conn.cursor()
-        entries = self.get_entries_for_day(serial, date)
-        if len(entries) == 0:
-            return None
-        return entries[len(entries)-1]
-
     # fixed
     def get_entries(self, inverters, timestamp):
         c = self.conn.cursor()
@@ -156,17 +129,6 @@ CREATE TABLE generation (inverter_serial INTEGER,
         if len(r) == 0:
             return None
         return r
-
-    # def get_entries_younger_than(self, serial, entry):
-    #     timestamp = entry[0]
-    #     c = self.conn.cursor()
-    #     c.execute("SELECT timestamp,total_yield "
-    #               "FROM generation "
-    #               "WHERE inverter_serial = ? AND "
-    #               " timestamp > ? "
-    #               "ORDER BY timestamp ASC", (serial, str(timestamp)))
-    #     r = c.fetchall()
-    #     return r
 
     def get_productions_younger_than(self, inverters, timestamp):
         serials = ','.join(x.serial for x in inverters)
