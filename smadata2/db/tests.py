@@ -16,7 +16,7 @@ class BaseDB(object):
         pass
 
     def test_trivial(self):
-        assert isinstance(self.db, smadata2.db.BaseDatabase)
+        assert isinstance(self.db, smadata2.db.base.BaseDatabase)
 
     def test_add_get_historic(self):
         # Serial is defined as INTEGER, but we abuse the fact that

@@ -19,22 +19,10 @@
 
 from __future__ import print_function
 
-import sys
-import os.path
-import time
+import os
 import sqlite3
-import datetime
-import calendar
 
-
-class Error(Exception):
-    pass
-
-
-class BaseDatabase(object):
-    def get_magic(self):
-        raise NotImplementedError
-
+from base import BaseDatabase, Error
 
 class SQLiteDatabase(BaseDatabase):
     DB_MAGIC = 0x71534d41
@@ -198,26 +186,3 @@ CREATE TABLE generation (inverter_serial INTEGER,
 
     def commit(self):
         self.conn.commit()
-
-
-class MockDatabase(BaseDatabase):
-    def __init__(self):
-        super(MockDatabase, self).__init__()
-        self.historic = set()
-
-    def add_historic(self, serial, timestamp, total_yield):
-        self.historic.add((serial, timestamp, total_yield))
-
-    def get_one_historic(self, serial, timestamp):
-        for s, t, y in self.historic:
-            if (s == serial) and (t == timestamp):
-                return y
-        return None
-
-    def get_last_historic(self, serial):
-        stamps = set(t for s, t, y in self.historic)
-        if stamps:
-            return max(stamps)
-        else:
-            return None
-
