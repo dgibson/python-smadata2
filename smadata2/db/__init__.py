@@ -19,6 +19,5 @@
 
 from __future__ import print_function
 
-from base import Error
-from mock import MockDatabase
-from sqlite import SQLiteDatabase
+from base import *
+from sqlite import *

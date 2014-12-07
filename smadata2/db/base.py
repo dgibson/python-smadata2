@@ -20,7 +20,14 @@
 from __future__ import print_function
 
 
+all = ['Error', 'WrongSchema']
+
+
 class Error(Exception):
+    pass
+
+
+class WrongSchema(Error):
     pass
 
 

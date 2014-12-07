@@ -20,58 +20,50 @@
 from __future__ import print_function
 
 import os
+import shutil
+import re
 import sqlite3
 
-from base import BaseDatabase, Error
+from base import *
+
+
+all = ['SQLiteDatabase']
+
+_whitespace = re.compile('\s+')
+
+def squash_schema(sqls):
+    l = []
+    for sql in sqls:
+        l.append(_whitespace.sub(' ', sql.strip()))
+    return frozenset(l)
+
+
+def sqlite_schema(conn):
+    c = conn.cursor()
+    c.execute("SELECT sql FROM sqlite_master WHERE type = 'table'")
+    sqls = [x[0] for x in c.fetchall()]
+    return squash_schema(sqls)
+
 
 class SQLiteDatabase(BaseDatabase):
-    DB_MAGIC = 0x71534d41
-    DB_VERSION = 0
-
-    @classmethod
-    def create(cls, filename):
-        # This is a convenience / sanity check
-        # It's racy, so it's not secure or foolproof
-        if os.path.exists(filename):
-            raise ValueError("Database file %s already exists" % filename)
-
-        conn = sqlite3.connect(filename)
-        conn.execute("""
-CREATE TABLE generation (inverter_serial INTEGER,
-                         timestamp INTEGER,
-                         total_yield INTEGER,
-                         PRIMARY KEY (inverter_serial, timestamp))""")
-        conn.execute("CREATE TABLE schema (magic INTEGER, version INTEGER)")
-        conn.execute("""CREATE TABLE pvoutput (sid STRING,
-                                               last_datetime_uploaded INTEGER)""")
-        conn.execute("INSERT INTO schema (magic, version) VALUES (?, ?)",
-                     (cls.DB_MAGIC, cls.DB_VERSION))
-        conn.commit()
-        del conn
-        return cls(filename)
+    DDL = [
+"""CREATE TABLE generation (inverter_serial INTEGER,
+                            timestamp INTEGER,
+                            total_yield INTEGER,
+                            PRIMARY KEY (inverter_serial, timestamp))""",
+"""CREATE TABLE schema (magic INTEGER, version INTEGER)""",
+"""CREATE TABLE pvoutput (sid STRING,
+                          last_datetime_uploaded INTEGER)""",
+    ]
 
     def __init__(self, filename):
         super(SQLiteDatabase, self).__init__()
 
         self.conn = sqlite3.connect(filename)
 
-        magic, version = self.get_magic()
-        if (magic != self.DB_MAGIC) or (version != self.DB_VERSION):
-            raise Error("Incorrect database version (0x%x, %d)"
-                        % (magic, version))
-
-    def get_magic(self):
-        c = self.conn.cursor()
-        try:
-            c.execute("SELECT magic, version FROM schema;")
-            r = c.fetchone()
-        except sqlite3.OperationalError:
-            raise Error("No schema table")
-        magic, version = r[0], r[1]
-        if c.fetchone() is not None:
-            if c.fetchone() is not None:
-                raise Error("Bad version table")
-        return magic, version
+        schema = sqlite_schema(self.conn)
+        if schema != squash_schema(self.DDL):
+            raise WrongSchema("Incorrect database schema")
 
     # return midnights for each day in the database
     # @param serial the inverter seial number to retrieve midnights for
@@ -186,3 +178,57 @@ CREATE TABLE generation (inverter_serial INTEGER,
 
     def commit(self):
         self.conn.commit()
+
+
+SCHEMA_CURRENT = squash_schema(SQLiteDatabase.DDL)
+
+
+SCHEMA_EMPTY = frozenset()
+
+
+def create_from_empty(conn):
+    for sql in SQLiteDatabase.DDL:
+        conn.execute(sql)
+    conn.commit()
+
+
+_schema_table = {
+    SCHEMA_CURRENT: None,
+    SCHEMA_EMPTY: create_from_empty,
+}
+
+
+def try_open(filename):
+    try:
+        db = SQLiteDatabase(filename)
+        return db
+    except WrongSchema:
+        return None
+
+
+def create_or_update(filename):
+    db = try_open(filename)
+
+    if db is None:
+        bkname = filename + ".bak"
+        shutil.copyfile(filename, bkname)
+
+    while db is None:
+        conn = sqlite3.connect(filename)
+
+        old_schema = sqlite_schema(conn)
+
+        if old_schema not in _schema_table:
+            raise WrongSchema("Unrecognized database schema")
+
+        conv = _schema_table[old_schema]
+        assert conv is not None
+
+        conv(conn)
+
+        del conn
+
+        # Try again
+        db = try_open(filename)
+
+    return db

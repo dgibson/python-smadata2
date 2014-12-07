@@ -1,17 +1,27 @@
 #! /usr/bin/env python
 
+from __future__ import print_function
+
 import StringIO
+import os
 import os.path
-import unittest
-import time
-import datetime
+import errno
+import sqlite3
 
 from nose.tools import *
 
 import smadata2.db
+import smadata2.db.mock
+
+def removef(filename):
+    try:
+        os.remove(filename)
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            raise
 
 
-class BaseDB(object):
+class CommonChecks(object):
     def setUp(self):
         pass
 
@@ -61,34 +71,55 @@ class BaseDB(object):
         assert_equals(self.db.get_last_historic(serial), 3600)
 
 
-class TestDBMock(BaseDB):
+class TestDBMock(CommonChecks):
     def setUp(self):
         super(TestDBMock, self).setUp()
-        self.db = smadata2.db.MockDatabase()
+        self.db = smadata2.db.mock.MockDatabase()
 
 
-class TestDBSQLite(BaseDB):
-    def setUp(self):
-        super(TestDBSQLite, self).setUp()
-        self.dbname = "__testdb__smadata2_%s_.sqlite" % self.__class__.__name__
-        self.db = smadata2.db.SQLiteDatabase.create(self.dbname)
-
-    def tearDown(self):
-        os.remove(self.dbname)
-
-    def test_magic(self):
-        magic, version = self.db.get_magic()
-        assert_equals(magic, smadata2.db.SQLiteDatabase.DB_MAGIC)
-        assert_equals(version, smadata2.db.SQLiteDatabase.DB_VERSION)
-
-
-class TestEmptyDB(object):
+class BaseSQLite(object):
     def setUp(self):
         self.dbname = "__testdb__smadata2_%s_.sqlite" % self.__class__.__name__
+        self.bakname = self.dbname + ".bak"
+
+        # Start with a blank slate
+        removef(self.dbname)
+        removef(self.bakname)
+
+        self.prepopulate()
+
+        if os.path.exists(self.dbname):
+            self.original = open(self.dbname).read()
+        else:
+            self.original = None
 
     def tearDown(self):
-        os.remove(self.dbname)
+        removef(self.dbname)
+        removef(self.bakname)
 
-    @raises(smadata2.db.Error)
-    def test_empty(self):
+    def prepopulate(self):
+        pass
+
+
+class TestEmptySQLiteDB(BaseSQLite):
+    """Check that we correctly fail on an empty DB"""
+
+    def test_is_empty(self):
+        assert not os.path.exists(self.dbname)
+
+    @raises(smadata2.db.WrongSchema)
+    def test_open(self):
         self.db = smadata2.db.SQLiteDatabase(self.dbname)
+
+
+class TestCreateSQLite(BaseSQLite, CommonChecks):
+    def setUp(self):
+        super(TestCreateSQLite, self).setUp()
+        self.db = smadata2.db.sqlite.create_or_update(self.dbname)
+
+
+class BaseUpdateSQLite(TestCreateSQLite):
+    def test_backup(self):
+        assert os.path.exists(self.bakname)
+        backup = open(self.bakname).read()
+        assert_equals(self.original, backup)
