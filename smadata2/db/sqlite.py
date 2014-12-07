@@ -51,7 +51,6 @@ class SQLiteDatabase(BaseDatabase):
                             timestamp INTEGER,
                             total_yield INTEGER,
                             PRIMARY KEY (inverter_serial, timestamp))""",
-"""CREATE TABLE schema (magic INTEGER, version INTEGER)""",
 """CREATE TABLE pvoutput (sid STRING,
                           last_datetime_uploaded INTEGER)""",
     ]
@@ -192,11 +191,27 @@ def create_from_empty(conn):
     conn.commit()
 
 
+SCHEMA_V0 = squash_schema((
+"""CREATE TABLE generation (inverter_serial INTEGER,
+                            timestamp INTEGER,
+                            total_yield INTEGER,
+                            PRIMARY KEY (inverter_serial, timestamp))""",
+"""CREATE TABLE schema (magic INTEGER, version INTEGER)""",
+"""CREATE TABLE pvoutput (sid STRING,
+                          last_datetime_uploaded INTEGER)"""))
+
+
+def update_v0(conn):
+    conn.execute("DROP TABLE schema")
+    conn.execute("VACUUM")
+    conn.commit()
+
+
 _schema_table = {
     SCHEMA_CURRENT: None,
     SCHEMA_EMPTY: create_from_empty,
+    SCHEMA_V0: update_v0,
 }
-
 
 def try_open(filename):
     try:
@@ -225,6 +240,11 @@ def create_or_update(filename):
         assert conv is not None
 
         conv(conn)
+
+        new_schema = sqlite_schema(conn)
+
+        assert old_schema != new_schema
+        assert new_schema in _schema_table
 
         del conn
 

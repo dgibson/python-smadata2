@@ -123,3 +123,23 @@ class BaseUpdateSQLite(TestCreateSQLite):
         assert os.path.exists(self.bakname)
         backup = open(self.bakname).read()
         assert_equals(self.original, backup)
+
+
+class TestUpdateV0(BaseUpdateSQLite):
+    def prepopulate(self):
+        DB_MAGIC = 0x71534d41
+        DB_VERSION = 0
+
+        conn = sqlite3.connect(self.dbname)
+        conn.executescript("""
+CREATE TABLE generation (inverter_serial INTEGER,
+                            timestamp INTEGER,
+                            total_yield INTEGER,
+                            PRIMARY KEY (inverter_serial, timestamp));
+CREATE TABLE schema (magic INTEGER, version INTEGER);
+CREATE TABLE pvoutput (sid STRING,
+                       last_datetime_uploaded INTEGER);""")
+        conn.execute("INSERT INTO schema (magic, version) VALUES (?, ?)",
+                     (DB_MAGIC, DB_VERSION))
+        conn.commit()
+        del conn
