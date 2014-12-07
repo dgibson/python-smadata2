@@ -119,10 +119,18 @@ class TestCreateSQLite(BaseSQLite, CommonChecks):
 
 
 class BaseUpdateSQLite(TestCreateSQLite):
+    PRESERVE_RECORD = ("PRESERVE", 0, 31415)
+
     def test_backup(self):
         assert os.path.exists(self.bakname)
         backup = open(self.bakname).read()
         assert_equals(self.original, backup)
+
+    def test_preserved(self):
+        serial, timestamp, tyield = self.PRESERVE_RECORD
+
+        assert_equals(self.db.get_last_historic(serial), timestamp)
+        assert_equals(self.db.get_one_historic(serial, timestamp), tyield)
 
 
 class TestUpdateV0(BaseUpdateSQLite):
@@ -142,6 +150,13 @@ CREATE TABLE pvoutput (sid STRING,
         conn.execute("INSERT INTO schema (magic, version) VALUES (?, ?)",
                      (DB_MAGIC, DB_VERSION))
         conn.commit()
+
+
+        conn.execute("""INSERT INTO generation (inverter_serial, timestamp,
+                                                 total_yield)
+                            VALUES (?, ?, ?)""", self.PRESERVE_RECORD)
+        conn.commit()
+
         del conn
 
 
@@ -157,3 +172,5 @@ class TestEmptySQLiteDB(BaseSQLite):
     @raises(smadata2.db.WrongSchema)
     def test_update(self):
         db = smadata2.db.sqlite.create_or_update(self.dbname)
+
+
