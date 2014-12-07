@@ -143,3 +143,17 @@ CREATE TABLE pvoutput (sid STRING,
                      (DB_MAGIC, DB_VERSION))
         conn.commit()
         del conn
+
+
+class TestEmptySQLiteDB(BaseSQLite):
+    """Check that we correctly fail attempting to update an unknwon format"""
+
+    def prepopulate(self):
+        conn = sqlite3.connect(self.dbname)
+        conn.execute("CREATE TABLE unrelated (random STRING, data INTEGER)")
+        conn.commit()
+        del conn
+
+    @raises(smadata2.db.WrongSchema)
+    def test_update(self):
+        db = smadata2.db.sqlite.create_or_update(self.dbname)
