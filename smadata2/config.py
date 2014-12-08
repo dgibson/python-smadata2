@@ -99,7 +99,7 @@ class SMAData2Config(object):
 
         alljson = json.load(f)
 
-        dbname = os.path.expanduser("~/.btsmadb.v0.sqlite")
+        dbname = os.path.expanduser("~/.smadata2.sqlite")
         if "database" in alljson:
             dbjson = alljson["database"]
             if "filename" in dbjson:

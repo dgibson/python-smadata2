@@ -1,9 +1,21 @@
 {
     "database": {
-	"filename": "~/.btsmadb.v0.sqlite"
+        "filename": "~/.smadata2.sqlite"
     },
-    "inverters": [{
-	"bluetooth": "00:80:25:xx:yy:zz",
-	"serial": "2130012345"
+    "pvoutput.org": {
+        "apikey": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    },
+    "systems": [{
+        "name": "My Photovoltaic System",
+        "pvoutput-sid": NNNNN,
+        "inverters": [{
+            "name": "Inverter 1",
+            "bluetooth": "00:80:25:xx:yy:zz",
+            "serial": "2130012345"
+        }, {
+            "name": "Inverter 2",
+            "bluetooth": "00:80:25:pp:qq:rr",
+            "serial": "2130012346"
+	}]
     }]
 }

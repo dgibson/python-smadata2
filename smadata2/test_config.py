@@ -21,7 +21,7 @@ class TestMinimalConfig(BaseTestConfig):
 
     def test_dbname(self):
         assert_equals(self.c.dbname,
-                      os.path.expanduser("~/.btsmadb.v0.sqlite"))
+                      os.path.expanduser("~/.smadata2.sqlite"))
 
     def test_systems(self):
         assert_equals(self.c.systems(), [])
