@@ -14,16 +14,6 @@ class PVOutputUploader(object):
     def setVerbose(self, verbose):
         self.verbose = verbose
 
-    # send a batch of datapoints to the server
-    # @param batch a two-dimension array [[ timestamp,totalprod ], ...]
-    def sendbatch(self, batch):
-        self.pvoutput.addbatchstatus(batch)
-
-    # returns maximum datapoints the API will accept in a batch
-    # @return an integer with the maximum batch length the API will accept
-    def batch_length_max(self):
-        return 30
-
     # send entries to server
     # @param entries entries to send [[ timestamp,totalprod ], ...]
     # @fixme sanity checking for too-old-dates should be made by callers
@@ -61,14 +51,14 @@ class PVOutputUploader(object):
                     time.sleep(timeout)
                 else:
                     havesent = True
-                self.sendbatch(batch)
+                self.pvoutput.addbatchstatus(batch)
                 batch = []
 
         if batch:
                 if havesent:
                     print("sleeping before sending final batch")
                     time.sleep(timeout)
-                self.sendbatch(batch)
+                self.pvoutput.addbatchstatus(batch)
 
     # filter out entries that we shouldn't upload to pvoutput.org
     # @param hwm the last datapoint [timestamp,generation] sent to server
