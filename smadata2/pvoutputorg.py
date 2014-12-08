@@ -51,7 +51,7 @@ class API(object):
 
         self.__getsystem()
 
-    def __request(self, script, args):
+    def _request(self, script, args):
         """Invoke a specific API script
 
         Args:
@@ -76,7 +76,7 @@ class API(object):
     def __getsystem(self):
         """Update self with information from the getsystem API call"""
 
-        data = self.__request("/service/r2/getsystem.jsp", {"donations": 1})
+        data = self._request("/service/r2/getsystem.jsp", {"donations": 1})
         sysinfo, tarriffs, donation = data.split(";")
 
         sysinfo = sysinfo.split(",")
@@ -97,7 +97,7 @@ class API(object):
         @fixme check API response
         """
 
-        content = self.__request("/service/r2/addoutput.jsp", {
+        content = self._request("/service/r2/addoutput.jsp", {
             "d": self.format_date(somedate),
             "g": somedelta,
         })
@@ -111,7 +111,7 @@ class API(object):
     def addstatus(self, timestamp, total_production):
         print("addstatus")
 
-        self.__request("/service/r2/addstatus.jsp", {
+        self._request("/service/r2/addstatus.jsp", {
             "d": time.strftime("%Y%m%d", time.localtime(timestamp)),
             "t": time.strftime("%H:%M", time.localtime(timestamp)),
             "c1": 1,
@@ -136,7 +136,7 @@ class API(object):
         productiondata = ';'.join(','.join(x) for x in new)
 
         print("productiondata=" + productiondata)
-        content = self.__request("/service/r2/addbatchstatus.jsp", {
+        content = self._request("/service/r2/addbatchstatus.jsp", {
             "data": productiondata,
             "c1": 1
         })
@@ -147,7 +147,7 @@ class API(object):
     # @return None
     def deletestatus(self, date):
         formatted_date, formatted_time = self.format_date_and_time(date)
-        self.__request("/service/r2/deletestatus.jsp", {
+        self._request("/service/r2/deletestatus.jsp", {
             'd': formatted_date,
             # 'h': 1,
         })
@@ -170,7 +170,7 @@ class API(object):
             if timeto is not None:
                 opts['to'] = timeto
 
-        data = self.__request('/service/r2/getstatus.jsp', opts)
+        data = self._request('/service/r2/getstatus.jsp', opts)
         outputs = data.split(';')
         ret = []
         for output in outputs:
@@ -199,7 +199,7 @@ class API(object):
         #     if timeto is not None:
         #         opts['to'] = timeto
 
-        data = self.__request('/service/r2/getstatus.jsp', opts)
+        data = self._request('/service/r2/getstatus.jsp', opts)
         outputs = data.split(';')
         ret = []
         for output in outputs:
@@ -223,7 +223,7 @@ class API(object):
         formatted_datefrom = self.format_date(datefrom)
         formatted_dateto = self.format_date(dateto)
 
-        data = self.__request('/service/r2/getmissing.jsp', {
+        data = self._request('/service/r2/getmissing.jsp', {
             'df': formatted_datefrom,
             'dt': formatted_dateto,
         })
