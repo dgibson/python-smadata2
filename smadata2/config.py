@@ -91,7 +91,10 @@ class SMAData2SystemConfig(object):
 
 
 class SMAData2Config(object):
-    def __init__(self, configfile=DEFAULT_CONFIG_FILE):
+    def __init__(self, configfile=None):
+        if configfile is None:
+            configfile = DEFAULT_CONFIG_FILE
+
         if isinstance(configfile, str):
             f = open(configfile, "r")
         else:

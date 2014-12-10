@@ -1,0 +1,6 @@
+#! /usr/bin/env python
+
+import smadata2.sma2mon
+
+if __name__ == '__main__':
+    smadata2.sma2mon.main()
