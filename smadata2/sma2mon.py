@@ -22,8 +22,10 @@ from __future__ import print_function
 import sys
 import argparse
 import time
+import os.path
 
 import smadata2.config
+import smadata2.db.sqlite
 import smadata2.util
 
 
@@ -78,6 +80,18 @@ def download(config, args):
             db.commit()
 
 
+def setupdb(config, args):
+    dbname = config.dbname
+    if not os.path.exists(dbname):
+        print("Creating database '%s'..." % dbname)
+    else:
+        print("Updating database schema for '%s'..." % dbname)
+    try:
+        smadata2.db.sqlite.create_or_update(config.dbname)
+    except smadata2.db.WrongSchema as e:
+        print(e)
+
+
 def argparser():
     parser = argparse.ArgumentParser(description="Work with Bluetooth enabled"
                                      + " SMA photovoltaic inverters")
@@ -93,6 +107,10 @@ def argparser():
                                            help="Download power history"
                                            + " and record in database")
     parse_download.set_defaults(func=download)
+
+    parse_setupdb = subparsers.add_parser("setupdb", help="Create database or"
+                                          + " update schema")
+    parse_setupdb.set_defaults(func=setupdb)
 
     return parser
 
