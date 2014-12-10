@@ -133,6 +133,31 @@ class BaseUpdateSQLite(TestCreateSQLite):
         assert_equals(self.db.get_one_historic(serial, timestamp), tyield)
 
 
+class TestUpdateNoPVO(BaseUpdateSQLite):
+    def prepopulate(self):
+        DB_MAGIC = 0x71534d41
+        DB_VERSION = 0
+
+        conn = sqlite3.connect(self.dbname)
+        conn.executescript("""
+CREATE TABLE generation (inverter_serial INTEGER,
+                            timestamp INTEGER,
+                            total_yield INTEGER,
+                            PRIMARY KEY (inverter_serial, timestamp));
+CREATE TABLE schema (magic INTEGER, version INTEGER);""")
+        conn.execute("INSERT INTO schema (magic, version) VALUES (?, ?)",
+                     (DB_MAGIC, DB_VERSION))
+        conn.commit()
+
+
+        conn.execute("""INSERT INTO generation (inverter_serial, timestamp,
+                                                 total_yield)
+                            VALUES (?, ?, ?)""", self.PRESERVE_RECORD)
+        conn.commit()
+
+        del conn
+
+
 class TestUpdateV0(BaseUpdateSQLite):
     def prepopulate(self):
         DB_MAGIC = 0x71534d41

@@ -191,6 +191,21 @@ def create_from_empty(conn):
     conn.commit()
 
 
+SCHEMA_NOPVO = squash_schema((
+"""CREATE TABLE generation (inverter_serial INTEGER,
+                            timestamp INTEGER,
+                            total_yield INTEGER,
+                            PRIMARY KEY (inverter_serial, timestamp))""",
+"""CREATE TABLE schema (magic INTEGER, version INTEGER)"""))
+
+
+def update_nopvo(conn):
+    conn.execute("""CREATE TABLE pvoutput (sid STRING,
+                                           last_datetime_uploaded INTEGER)""")
+    conn.execute("VACUUM")
+    conn.commit()
+
+
 SCHEMA_V0 = squash_schema((
 """CREATE TABLE generation (inverter_serial INTEGER,
                             timestamp INTEGER,
@@ -211,6 +226,7 @@ _schema_table = {
     SCHEMA_CURRENT: None,
     SCHEMA_EMPTY: create_from_empty,
     SCHEMA_V0: update_v0,
+    SCHEMA_NOPVO: update_nopvo,
 }
 
 def try_open(filename):
