@@ -518,7 +518,8 @@ class SMAData2BluetoothConnection(object):
                 timestamp = bytes2int(extra[0:4])
                 val = bytes2int(extra[4:8])
                 extra = extra[12:]
-                points.append((timestamp, val))
+                if val != 0xffffffff:
+                    points.append((timestamp, val))
         return points
 
     def historic_daily(self, fromtime, totime):

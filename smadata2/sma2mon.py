@@ -21,6 +21,7 @@ from __future__ import print_function
 
 import sys
 import argparse
+import time
 
 import smadata2.config
 import smadata2.util
@@ -44,6 +45,39 @@ def status(config, args):
                   % (smadata2.util.format_time(ttime), total))
 
 
+def download(config, args):
+    db = config.database()
+
+    for system in config.systems():
+        for inv in system.inverters():
+            print("%s (SN: %s)" % (inv.name, inv.serial))
+
+            lasttime = db.get_last_historic(inv.serial)
+            if lasttime is None:
+                lasttime = inv.starttime
+
+            now = int(time.time())
+
+            print("Retrieving data from %s to %s"
+                  % (smadata2.util.format_time(lasttime),
+                     smadata2.util.format_time(now)))
+
+            sma = inv.connect_and_logon()
+
+            data = sma.historic(lasttime+1, now)
+            if len(data):
+                print("Downloaded %d observations from %s to %s"
+                      % (len(data), smadata2.util.format_time(data[0][0]),
+                         smadata2.util.format_time(data[-1][0])))
+            else:
+                print("No new data")
+
+            for timestamp, total in data:
+                db.add_historic(inv.serial, timestamp, total)
+
+            db.commit()
+
+
 def argparser():
     parser = argparse.ArgumentParser(description="Work with Bluetooth enabled"
                                      + " SMA photovoltaic inverters")
@@ -54,6 +88,11 @@ def argparser():
 
     parse_status = subparsers.add_parser("status", help="Read inverter status")
     parse_status.set_defaults(func=status)
+
+    parse_download = subparsers.add_parser("download",
+                                           help="Download power history"
+                                           + " and record in database")
+    parse_download.set_defaults(func=download)
 
     return parser
 
