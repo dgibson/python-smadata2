@@ -25,7 +25,7 @@ import signal
 import readline
 import time
 
-from smadata2.protocol import *
+from smadata2.inverter.smabluetooth import *
 
 
 class Quit(Exception):
@@ -105,7 +105,7 @@ def dump_6560(prefix, from2, to2, a2, b1, b2, c1, c2, tag,
     print(hexdump(extra, prefix + "    "))
 
 
-class SMAData2CLI(SMAData2BluetoothConnection):
+class SMAData2CLI(Connection):
     def __init__(self, addr):
         super(SMAData2CLI, self).__init__(addr)
         print("Connected %s -> %s"

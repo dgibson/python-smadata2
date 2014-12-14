@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 #
-# smadata2.protocol - Python code to communicate with SMA inverters
+# smadata2.inverter.smabluetooth - Support for Bluetooth enabled SMA inverters
 # Copyright (C) 2014 David Gibson <david@gibson.dropbear.id.au>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -27,9 +27,10 @@ import time
 import bluetooth
 import readline
 
-from util import format_time
+import base
+from smadata2.util import format_time
 
-__all__ = ['SMAData2BluetoothConnection', 'Error',
+__all__ = ['Connection',
            'OTYPE_PPP', 'OTYPE_PPP2', 'OTYPE_HELLO', 'OTYPE_GETVAR',
            'OTYPE_VARVAL', 'OTYPE_ERROR',
            'OVAR_SIGNAL',
@@ -49,10 +50,6 @@ OVAR_SIGNAL = 0x05
 INNER_HLEN = 36
 
 SMA_PROTOCOL_ID = 0x6560
-
-
-class Error(Exception):
-    pass
 
 
 def waiter(fn):
@@ -153,7 +150,7 @@ def crc16(iv, data):
     return crc ^ 0xffff
 
 
-class SMAData2BluetoothConnection(object):
+class Connection(base.InverterConnection):
     MAXBUFFER = 512
     BROADCAST = "ff:ff:ff:ff:ff:ff"
     BROADCAST2 = bytearray('\xff\xff\xff\xff\xff\xff')
@@ -616,7 +613,7 @@ if __name__ == '__main__':
         print("No bluetooth address specified")
         sys.exit(1)
 
-    sma = SMAData2BluetoothConnection(bdaddr)
+    sma = Connection(bdaddr)
 
     sma.hello()
     sma.logon(timeout=60)

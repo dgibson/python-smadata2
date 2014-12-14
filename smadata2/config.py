@@ -26,7 +26,8 @@ import calendar
 import dateutil.parser
 import json
 
-import protocol
+import inverter
+import inverter.smabluetooth
 import pvoutputorg
 import util
 import db
@@ -45,7 +46,7 @@ class SMAData2InverterConfig(object):
             self.starttime = None
 
     def connect(self):
-        return protocol.SMAData2BluetoothConnection(self.bdaddr)
+        return inverter.smabluetooth.Connection(self.bdaddr)
 
     def connect_and_logon(self):
         conn = self.connect()
