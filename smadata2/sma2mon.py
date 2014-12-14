@@ -27,6 +27,7 @@ import os.path
 import smadata2.config
 import smadata2.db.sqlite
 import smadata2.util
+import smadata2.download
 
 
 def status(config, args):
@@ -54,30 +55,15 @@ def download(config, args):
         for inv in system.inverters():
             print("%s (SN: %s)" % (inv.name, inv.serial))
 
-            lasttime = db.get_last_historic(inv.serial)
-            if lasttime is None:
-                lasttime = inv.starttime
+            ic = inv.connect_and_logon()
 
-            now = int(time.time())
-
-            print("Retrieving data from %s to %s"
-                  % (smadata2.util.format_time(lasttime),
-                     smadata2.util.format_time(now)))
-
-            sma = inv.connect_and_logon()
-
-            data = sma.historic(lasttime+1, now)
+            data = smadata2.download.download_inverter(ic, db)
             if len(data):
                 print("Downloaded %d observations from %s to %s"
                       % (len(data), smadata2.util.format_time(data[0][0]),
                          smadata2.util.format_time(data[-1][0])))
             else:
                 print("No new data")
-
-            for timestamp, total in data:
-                db.add_historic(inv.serial, timestamp, total)
-
-            db.commit()
 
 
 def setupdb(config, args):
