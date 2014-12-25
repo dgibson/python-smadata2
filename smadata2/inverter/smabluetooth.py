@@ -570,8 +570,8 @@ def cmd_historic(sma, args):
 
     hlist = sma.historic(fromtime, totime)
     for timestamp, val in hlist:
-        print("%s: Total generation %d Wh"
-              % (format_time(timestamp), val))
+        print("[%d] %s: Total generation %d Wh"
+              % (timestamp, format_time(timestamp), val))
 
 
 def cmd_historic_daily(sma, args):
@@ -587,8 +587,8 @@ def cmd_historic_daily(sma, args):
 
     hlist = sma.historic_daily(fromtime, totime)
     for timestamp, val in hlist:
-        print("%s: Total generation %d Wh"
-              % (format_time(timestamp), val))
+        print("[%d] %s: Total generation %d Wh"
+              % (timestamp, format_time(timestamp), val))
 
 
 if __name__ == '__main__':
