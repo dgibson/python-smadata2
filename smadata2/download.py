@@ -19,6 +19,7 @@
 
 from __future__ import print_function
 
+
 def download_inverter(ic, db):
     lasttime = db.get_last_historic(ic.serial)
     if lasttime is None:

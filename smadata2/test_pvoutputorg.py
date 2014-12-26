@@ -16,7 +16,8 @@ def requestkey(script, args):
 class MockAPI(smadata2.pvoutputorg.API):
     responsetable = {
         requestkey("/service/r2/getsystem.jsp", {"donations": 1}):
-            "Mock System,1234,0000,39,250,Mock Panel Model,2,5000,Mock Inverter Model,NE,1.0,No,,0.000000,0.000000,5;;1"
+            "Mock System,1234,0000,39,250,Mock Panel Model,2,5000,\
+Mock Inverter Model,NE,1.0,No,,0.000000,0.000000,5;;1"
     }
 
     def __init__(self):

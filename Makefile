@@ -3,7 +3,7 @@ PEP8 = pep8
 
 NOSEFLAGS = --with-coverage --cover-package=smadata2
 
-SCRIPTS = sma2-download sma2-explore sma2-status \
+SCRIPTS = sma2-explore sma2mon \
 	sma2-upload-to-pvoutputorg sma2-push-daily-to-pvoutput
 PYFILES = $(SCRIPTS) $(wildcard smadata2/*.py)
 

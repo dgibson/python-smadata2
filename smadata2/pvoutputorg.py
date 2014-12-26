@@ -186,10 +186,10 @@ class API(object):
     # @return a list of lists
     # @fixme this is just dodgy, dodgy, dodgy
     def getstatus(self, fromdatetime, count):
-        formatted_date, formatted_time = self.format_date_and_time(fromdatetime)
+        fdate, ftime = self.format_date_and_time(fromdatetime)
         opts = {
-            'd': formatted_date,
-            't': formatted_time,
+            'd': fdate,
+            't': ftime,
             'h': 1,
             'limit': count,
             'asc': 1,
