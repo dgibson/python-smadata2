@@ -51,8 +51,7 @@ class TestConfigEmptySystem(BaseTestConfig):
         "systems": [
             {
                 "name": "Test System",
-                "pvoutput-sid": "12345",
-                "inverters": []
+                "pvoutput-sid": "12345"
             }
         ]
     }"""

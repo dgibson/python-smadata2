@@ -69,9 +69,10 @@ class SMAData2SystemConfig(object):
             self.pvoutput_sid = sysjson.get("pvoutput-sid", None)
 
             self.invs = []
-            for i, invjson in enumerate(sysjson["inverters"]):
-                defname = "%s-inverter-%04d" % (self.name, i)
-                self.invs.append(SMAData2InverterConfig(invjson, defname))
+            if "inverters" in sysjson:
+                for i, invjson in enumerate(sysjson["inverters"]):
+                    defname = "%s-inverter-%04d" % (self.name, i)
+                    self.invs.append(SMAData2InverterConfig(invjson, defname))
         else:
             assert invjson is not None
 
