@@ -5,6 +5,7 @@ import os.path
 import unittest
 import time
 import datetime
+import dateutil.tz
 
 from nose.tools import *
 
@@ -67,6 +68,10 @@ class TestConfigEmptySystem(BaseTestConfig):
     def test_pvosystem(self):
         system = self.c.systems()[0]
         assert_equals(system.pvoutput_sid, "12345")
+
+    def test_timezone(self):
+        system = self.c.systems()[0]
+        assert system.timezone() is dateutil.tz.tzlocal
 
 
 class TestConfigSimpleSystem(TestConfigEmptySystem):
@@ -142,3 +147,22 @@ class TestConfigBareInverter(BaseTestConfig):
         xtime = time.mktime(datetime.datetime(2000, 1, 1).timetuple())
         assert inv.starttime is None
         assert isinstance(str(inv), str)
+
+
+class TestConfigUTCSystem(TestConfigEmptySystem):
+    json = """
+    {
+        "systems": [
+            {
+                "name": "Test System",
+                "pvoutput-sid": "12345",
+		"timezone": "UTC"
+            }
+         ]
+    }"""
+
+    def test_timezone(self):
+        system = self.c.systems()[0]
+        dt = datetime.datetime(2007, 11, 5,
+                               15, 37, 56, 9999, system.timezone())
+        assert_equals(dt.tzname(), "UTC")

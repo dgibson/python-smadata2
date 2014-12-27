@@ -24,6 +24,7 @@ import os
 import time
 import calendar
 import dateutil.parser
+import dateutil.tz
 import json
 
 import inverter
@@ -67,6 +68,7 @@ class SMAData2SystemConfig(object):
 
             self.name = sysjson.get("name", "system-%04d" % index)
             self.pvoutput_sid = sysjson.get("pvoutput-sid", None)
+            self.tz = sysjson.get("timezone", None)
 
             self.invs = []
             if "inverters" in sysjson:
@@ -80,11 +82,18 @@ class SMAData2SystemConfig(object):
                                          "standalone-inverter-%04d" % index)
             self.name = inv.name
             self.pvoutput_sid = invjson.get("pvoutput-sid", None)
+            self.tz = invjson.get("timezone", None)
 
             self.invs = [inv]
 
     def inverters(self):
         return self.invs
+
+    def timezone(self):
+        if self.tz is None:
+            return dateutil.tz.tzlocal
+        else:
+            return dateutil.tz.gettz(self.tz)
 
     def __str__(self):
         return ("%s: (pvoutput.org SID '%s')\n" % (self.name,
