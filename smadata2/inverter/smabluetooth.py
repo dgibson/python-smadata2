@@ -28,7 +28,7 @@ import bluetooth
 import readline
 
 import base
-from smadata2.util import format_time
+from smadata2.datetimeutil import format_time
 
 __all__ = ['Connection',
            'OTYPE_PPP', 'OTYPE_PPP2', 'OTYPE_HELLO', 'OTYPE_GETVAR',

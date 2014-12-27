@@ -29,7 +29,7 @@ import json
 import inverter
 import inverter.smabluetooth
 import pvoutputorg
-import util
+import datetimeutil
 import db
 
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
@@ -41,7 +41,7 @@ class SMAData2InverterConfig(object):
         self.serial = invjson["serial"]
         self.name = invjson.get("name", defname)
         if "start-time" in invjson:
-            self.starttime = util.parse_time(invjson["start-time"])
+            self.starttime = datetimeutil.parse_time(invjson["start-time"])
         else:
             self.starttime = None
 

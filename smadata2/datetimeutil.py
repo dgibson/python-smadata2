@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 #
-# smadata2.util - Utility functions for SMAData2 code
-# Copyright (C) 2014 David Gibson <david@gibson.dropbear.id.au>
+# smadata2.datetimeutil - Date and time helper functions
+# Copyright (C) 2014, 2015 David Gibson <david@gibson.dropbear.id.au>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

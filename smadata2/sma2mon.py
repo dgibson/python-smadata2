@@ -26,7 +26,7 @@ import os.path
 
 import smadata2.config
 import smadata2.db.sqlite
-import smadata2.util
+import smadata2.datetimeutil
 import smadata2.download
 
 
@@ -41,11 +41,11 @@ def status(config, args):
 
             dtime, daily = sma.daily_yield()
             print("\t\tDaily generation at %s:\t%d Wh"
-                  % (smadata2.util.format_time(dtime), daily))
+                  % (smadata2.datetimeutil.format_time(dtime), daily))
 
             ttime, total = sma.total_yield()
             print("\t\tTotal generation at %s:\t%d Wh"
-                  % (smadata2.util.format_time(ttime), total))
+                  % (smadata2.datetimeutil.format_time(ttime), total))
 
 
 def download(config, args):
@@ -60,8 +60,9 @@ def download(config, args):
             data = smadata2.download.download_inverter(ic, db)
             if len(data):
                 print("Downloaded %d observations from %s to %s"
-                      % (len(data), smadata2.util.format_time(data[0][0]),
-                         smadata2.util.format_time(data[-1][0])))
+                      % (len(data),
+                         smadata2.datetimeutil.format_time(data[0][0]),
+                         smadata2.datetimeutil.format_time(data[-1][0])))
             else:
                 print("No new data")
 

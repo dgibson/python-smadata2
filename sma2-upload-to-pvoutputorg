@@ -26,7 +26,6 @@ import sys
 import time
 
 import smadata2.protocol
-import smadata2.util
 import smadata2.config
 import smadata2.db
 import smadata2.pvoutputuploader

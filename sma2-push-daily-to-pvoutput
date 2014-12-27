@@ -23,7 +23,7 @@ import datetime
 import time
 
 import smadata2.protocol
-import smadata2.util
+import smadata2.datetimeutil
 import smadata2.config
 import smadata2.db
 
@@ -47,8 +47,8 @@ for system in config.systems():
         # range does *not* include totime! FIXME
 
         print("Retrieving data from %s to %s"
-              % (smadata2.util.format_date(lasttime),
-                 smadata2.util.format_date(totime)))
+              % (smadata2.datetimeutil.format_date(lasttime),
+                 smadata2.datetimeutil.format_date(totime)))
 
         mypvoutput = config.pvoutput_connect()
 
@@ -57,8 +57,8 @@ for system in config.systems():
         data = sma.historic_daily(int(lasttime), int(totime))
         if len(data):
             print("Downloaded %d observations from %s to %s"
-                  % (len(data), smadata2.util.format_time(data[0][0]),
-                     smadata2.util.format_time(data[-1][0])))
+                  % (len(data), smadata2.datetimeutil.format_time(data[0][0]),
+                     smadata2.datetimeutil.format_time(data[-1][0])))
             last = None
             for datum in data:
                 if datum[1] == 4294967295:
