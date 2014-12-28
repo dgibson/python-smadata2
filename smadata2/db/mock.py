@@ -42,3 +42,15 @@ class MockDatabase(BaseDatabase):
         else:
             return None
 
+    def get_aggregate_historic(self, from_ts, to_ts, ids):
+        rd = {}
+        for s, t, y in self.historic:
+            if (s in ids) and (t >= from_ts) and (t < to_ts):
+                if t not in rd:
+                    rd[t] = y
+                else:
+                    rd[t] += y
+        rl = []
+        for t in sorted(rd.keys()):
+            rl.append((t, rd[t]))
+        return rl

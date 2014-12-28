@@ -64,6 +64,41 @@ class SQLiteDatabase(BaseDatabase):
         if schema != squash_schema(self.DDL):
             raise WrongSchema("Incorrect database schema")
 
+    def commit(self):
+        self.conn.commit()
+
+    def add_historic(self, serial, timestamp, total_yield):
+        c = self.conn.cursor()
+        c.execute("INSERT INTO generation"
+                  + " (inverter_serial, timestamp, total_yield)"
+                  + " VALUES (?, ?, ?);",
+                  (serial, timestamp, total_yield))
+
+    def get_one_historic(self, serial, timestamp):
+        c = self.conn.cursor()
+        c.execute("SELECT total_yield FROM generation"
+                  " WHERE inverter_serial = ?"
+                  " AND timestamp = ?", (serial, timestamp))
+        r = c.fetchone()
+        if r is not None:
+            return r[0]
+
+    def get_last_historic(self, serial):
+        c = self.conn.cursor()
+        c.execute("SELECT max(timestamp) FROM generation"
+                  " WHERE inverter_serial = ?", (serial,))
+        r = c.fetchone()
+        return r[0]
+
+    def get_aggregate_historic(self, from_ts, to_ts, ids):
+        c = self.conn.cursor()
+        c.execute("SELECT timestamp, sum(total_yield) FROM generation"
+                  " WHERE inverter_serial IN (" + ",".join("?" * len(ids)) + ")"
+                  + " AND timestamp >= ? AND timestamp < ?"
+                  + " GROUP BY timestamp ORDER BY timestamp ASC",
+                  tuple(ids) + (from_ts, to_ts))
+        return c.fetchall()
+
     # return midnights for each day in the database
     # @param serial the inverter seial number to retrieve midnights for
     # @return all midnights in database as datetime objects
@@ -121,13 +156,6 @@ class SQLiteDatabase(BaseDatabase):
         r = c.fetchall()
         return r
 
-    def get_last_historic(self, serial):
-        c = self.conn.cursor()
-        c.execute("SELECT max(timestamp) FROM generation"
-                  " WHERE inverter_serial = ?", (serial,))
-        r = c.fetchone()
-        return r[0]
-
     def pvoutput_get_last_datetime_uploaded(self, sid):
         c = self.conn.cursor()
         c.execute("SELECT last_datetime_uploaded "
@@ -158,25 +186,6 @@ class SQLiteDatabase(BaseDatabase):
                   "SET last_datetime_uploaded = ?"
                   "WHERE sid = ?", (value, sid))
         self.commit()
-
-    def get_one_historic(self, serial, timestamp):
-        c = self.conn.cursor()
-        c.execute("SELECT total_yield FROM generation"
-                  " WHERE inverter_serial = ?"
-                  " AND timestamp = ?", (serial, timestamp))
-        r = c.fetchone()
-        if r is not None:
-            return r[0]
-
-    def add_historic(self, serial, timestamp, total_yield):
-        c = self.conn.cursor()
-        c.execute("INSERT INTO generation"
-                  + " (inverter_serial, timestamp, total_yield)"
-                  + " VALUES (?, ?, ?);",
-                  (serial, timestamp, total_yield))
-
-    def commit(self):
-        self.conn.commit()
 
 
 SCHEMA_CURRENT = squash_schema(SQLiteDatabase.DDL)

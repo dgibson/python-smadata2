@@ -24,8 +24,12 @@ def removef(filename):
 class BaseDBChecker(object):
     def setUp(self):
         self.db = self.opendb()
+        self.sample_data()
 
     def tearDown(self):
+        pass
+
+    def sample_data(self):
         pass
 
 
@@ -112,10 +116,78 @@ class SimpleChecks(BaseDBChecker):
         assert_equals(self.db.get_last_historic(serial), 3600)
 
 
+class AggregateChecks(BaseDBChecker):
+    def sample_data(self):
+        super(AggregateChecks, self).sample_data()
+
+        self.serial1 = "__TEST__1"
+        self.serial2 = "__TEST__2"
+
+        self.dawn = 8*3600
+        self.dusk = 20*3600
+
+        for ts in range(0, self.dawn, 300):
+            self.db.add_historic(self.serial1, ts, 0)
+            self.db.add_historic(self.serial2, ts, 0)
+
+        for ts in range(self.dawn, self.dusk, 300):
+            self.db.add_historic(self.serial1, ts, ts - self.dawn)
+            self.db.add_historic(self.serial2, ts, 2*(ts - self.dawn))
+
+        for ts in range(self.dusk, 24*3600, 300):
+            self.db.add_historic(self.serial1, ts, self.dusk - self.dawn)
+            self.db.add_historic(self.serial2, ts, 2*(self.dusk - self.dawn))
+
+    def test_basic(self):
+        for ts in range(0, self.dawn, 300):
+            y1 = self.db.get_one_historic(self.serial1, ts)
+            y2 = self.db.get_one_historic(self.serial2, ts)
+
+            assert_equals(y1, 0)
+            assert_equals(y2, 0)
+
+        for ts in range(self.dawn, self.dusk, 300):
+            y1 = self.db.get_one_historic(self.serial1, ts)
+            y2 = self.db.get_one_historic(self.serial2, ts)
+
+            assert_equals(y1, ts - self.dawn)
+            assert_equals(y2, 2*(ts - self.dawn))
+
+        for ts in range(self.dusk, 24*3600, 300):
+            y1 = self.db.get_one_historic(self.serial1, ts)
+            y2 = self.db.get_one_historic(self.serial2, ts)
+
+            assert_equals(y1, self.dusk - self.dawn)
+            assert_equals(y2, 2*(self.dusk - self.dawn))
+
+    def check_aggregate_range(self, from_, to_):
+        results = self.db.get_aggregate_historic(from_, to_,
+                                                 (self.serial1, self.serial2))
+
+        first = results[0][0]
+        last = results[-1][0]
+
+        assert_equals(first, from_)
+        assert_equals(last, to_ - 300)
+
+        for ts, y in results:
+            if ts < self.dawn:
+                assert_equals(y, 0)
+            elif ts < self.dusk:
+                assert_equals(y, 3*(ts - self.dawn))
+            else:
+                assert_equals(y, 3*(self.dusk - self.dawn))
+
+    def test_aggregate(self):
+        yield self.check_aggregate_range, 0, 24*3600
+        yield self.check_aggregate_range, 8*3600, 20*3600
+        yield self.check_aggregate_range, 13*3600, 14*3600
+
+
 #
 # Construct the basic tests as a cross-product
 #
-for cset in (SimpleChecks,):
+for cset in (SimpleChecks, AggregateChecks):
     for db in (MockDBChecker, SQLiteDBChecker):
         name = "_".join(("Test", cset.__name__, db.__name__))
         globals()[name] = type(name, (cset, db), {})
