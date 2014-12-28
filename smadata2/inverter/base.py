@@ -19,6 +19,8 @@
 
 from __future__ import print_function
 
+import abc
+
 
 all = ["Error"]
 
@@ -28,14 +30,20 @@ class Error(Exception):
 
 
 class InverterConnection(object):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
     def total_yield(self):
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def daily_yield(self):
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def historic(self, fromtime, totime):
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def historic_daily(self, fromtime, totime):
         raise NotImplementedError()

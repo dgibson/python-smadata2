@@ -19,6 +19,8 @@
 
 from __future__ import print_function
 
+import abc
+
 
 all = ['Error', 'WrongSchema']
 
@@ -32,11 +34,16 @@ class WrongSchema(Error):
 
 
 class BaseDatabase(object):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
     def add_historic(self, serial, timestamp, total_yield):
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def get_one_historic(self, serial, timestamp):
         raise NotImplementedError()
 
+    @abc.abstractmethod
     def get_last_historic(self, serial):
         raise NotImplementedError()

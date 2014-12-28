@@ -71,19 +71,6 @@ class CommonChecks(object):
         assert_equals(self.db.get_last_historic(serial), 3600)
 
 
-class TestDBAbstract(CommonChecks):
-    def setUp(self):
-        super(TestDBAbstract, self).setUp()
-        self.db = smadata2.db.base.BaseDatabase()
-
-    def __getattribute__(self, name):
-        attr = object.__getattribute__(self, name)
-        if name.startswith("test_") and name != "test_trivial":
-            return raises(NotImplementedError)(attr)
-        else:
-            return attr
-
-
 class TestDBMock(CommonChecks):
     def setUp(self):
         super(TestDBMock, self).setUp()
