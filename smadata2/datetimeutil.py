@@ -20,7 +20,19 @@
 from __future__ import print_function
 
 import dateutil.parser
+import dateutil.tz
+import datetime
 import time
+
+
+def totimestamp(dt):
+    if not isinstance(dt, datetime.datetime):
+        raise TypeError
+    if dt.tzinfo is None:
+        raise TypeError("Requires aware datetime object")
+    epoch = datetime.datetime(1970, 1, 1, tzinfo=dateutil.tz.tzutc())
+    fstamp = (dt - epoch).total_seconds()
+    return int(fstamp)
 
 
 def parse_time(s):
