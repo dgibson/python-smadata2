@@ -29,13 +29,13 @@ class Error(Exception):
 
 class InverterConnection(object):
     def total_yield(self):
-        raise NotImplemented
+        raise NotImplementedError()
 
     def daily_yield(self):
-        raise NotImplemented
+        raise NotImplementedError()
 
     def historic(self, fromtime, totime):
-        raise NotImplemented
+        raise NotImplementedError()
 
     def historic_daily(self, fromtime, totime):
-        raise NotImplemented
+        raise NotImplementedError()

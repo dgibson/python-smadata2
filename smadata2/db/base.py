@@ -32,4 +32,11 @@ class WrongSchema(Error):
 
 
 class BaseDatabase(object):
-    pass
+    def add_historic(self, serial, timestamp, total_yield):
+        raise NotImplementedError()
+
+    def get_one_historic(self, serial, timestamp):
+        raise NotImplementedError()
+
+    def get_last_historic(self, serial):
+        raise NotImplementedError()
