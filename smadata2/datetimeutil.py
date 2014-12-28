@@ -35,6 +35,16 @@ def totimestamp(dt):
     return int(fstamp)
 
 
+def day_timestamps(d, tz):
+    if not isinstance(d, datetime.date):
+        raise TypeError
+    d1  = d + datetime.timedelta(days=1)
+    midnight = datetime.time(0, 0, 0, 0, tz)
+    dt0 = datetime.datetime.combine(d, midnight)
+    dt1 = datetime.datetime.combine(d1, midnight)
+    return totimestamp(dt0), totimestamp(dt1)
+
+
 def parse_time(s):
     dt = dateutil.parser.parse(s)
     return int(time.mktime(dt.timetuple()))
