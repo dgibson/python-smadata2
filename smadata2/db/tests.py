@@ -21,10 +21,51 @@ def removef(filename):
             raise
 
 
-class CommonChecks(object):
+class BaseDBChecker(object):
     def setUp(self):
+        self.db = self.opendb()
+
+    def tearDown(self):
         pass
 
+
+class MockDBChecker(BaseDBChecker):
+    def opendb(self):
+        return smadata2.db.mock.MockDatabase()
+
+
+class BaseSQLite(object):
+    def prepare_sqlite(self):
+        self.dbname = "__testdb__smadata2_%s_.sqlite" % self.__class__.__name__
+        self.bakname = self.dbname + ".bak"
+
+        # Start with a blank slate
+        removef(self.dbname)
+        removef(self.bakname)
+
+        self.prepopulate()
+
+        if os.path.exists(self.dbname):
+            self.original = open(self.dbname).read()
+        else:
+            self.original = None
+
+    def prepopulate(self):
+        pass
+
+
+class SQLiteDBChecker(BaseSQLite, BaseDBChecker):
+    def opendb(self):
+        self.prepare_sqlite()
+        return smadata2.db.sqlite.create_or_update(self.dbname)
+
+    def tearDown(self):
+        removef(self.dbname)
+        removef(self.bakname)
+        super(SQLiteDBChecker, self).tearDown()
+
+
+class SimpleChecks(BaseDBChecker):
     def test_trivial(self):
         assert isinstance(self.db, smadata2.db.base.BaseDatabase)
 
@@ -71,54 +112,19 @@ class CommonChecks(object):
         assert_equals(self.db.get_last_historic(serial), 3600)
 
 
-class TestDBMock(CommonChecks):
-    def setUp(self):
-        super(TestDBMock, self).setUp()
-        self.db = smadata2.db.mock.MockDatabase()
+#
+# Construct the basic tests as a cross-product
+#
+for cset in (SimpleChecks,):
+    for db in (MockDBChecker, SQLiteDBChecker):
+        name = "_".join(("Test", cset.__name__, db.__name__))
+        globals()[name] = type(name, (cset, db), {})
 
 
-class BaseSQLite(object):
-    def setUp(self):
-        self.dbname = "__testdb__smadata2_%s_.sqlite" % self.__class__.__name__
-        self.bakname = self.dbname + ".bak"
-
-        # Start with a blank slate
-        removef(self.dbname)
-        removef(self.bakname)
-
-        self.prepopulate()
-
-        if os.path.exists(self.dbname):
-            self.original = open(self.dbname).read()
-        else:
-            self.original = None
-
-    def tearDown(self):
-        removef(self.dbname)
-        removef(self.bakname)
-
-    def prepopulate(self):
-        pass
-
-
-class TestEmptySQLiteDB(BaseSQLite):
-    """Check that we correctly fail on an empty DB"""
-
-    def test_is_empty(self):
-        assert not os.path.exists(self.dbname)
-
-    @raises(smadata2.db.WrongSchema)
-    def test_open(self):
-        self.db = smadata2.db.SQLiteDatabase(self.dbname)
-
-
-class TestCreateSQLite(BaseSQLite, CommonChecks):
-    def setUp(self):
-        super(TestCreateSQLite, self).setUp()
-        self.db = smadata2.db.sqlite.create_or_update(self.dbname)
-
-
-class BaseUpdateSQLite(TestCreateSQLite):
+#
+# Tests for sqlite schema updating
+#
+class UpdateSQLiteChecker(Test_SimpleChecks_SQLiteDBChecker):
     PRESERVE_RECORD = ("PRESERVE", 0, 31415)
 
     def test_backup(self):
@@ -133,7 +139,7 @@ class BaseUpdateSQLite(TestCreateSQLite):
         assert_equals(self.db.get_one_historic(serial, timestamp), tyield)
 
 
-class TestUpdateNoPVO(BaseUpdateSQLite):
+class TestUpdateNoPVO(UpdateSQLiteChecker):
     def prepopulate(self):
         DB_MAGIC = 0x71534d41
         DB_VERSION = 0
@@ -158,7 +164,7 @@ CREATE TABLE schema (magic INTEGER, version INTEGER);""")
         del conn
 
 
-class TestUpdateV0(BaseUpdateSQLite):
+class TestUpdateV0(UpdateSQLiteChecker):
     def prepopulate(self):
         DB_MAGIC = 0x71534d41
         DB_VERSION = 0
@@ -185,7 +191,23 @@ CREATE TABLE pvoutput (sid STRING,
         del conn
 
 
-class TestEmptySQLiteDB(BaseSQLite):
+class BadSchemaSQLiteChecker(BaseSQLite):
+    def setUp(self):
+        self.prepare_sqlite()
+
+    @raises(smadata2.db.WrongSchema)
+    def test_open(self):
+        self.db = smadata2.db.SQLiteDatabase(self.dbname)
+
+
+class TestEmptySQLiteDB(BadSchemaSQLiteChecker):
+    """Check that we correctly fail on an empty DB"""
+
+    def test_is_empty(self):
+        assert not os.path.exists(self.dbname)
+
+
+class TestBadSQLite(BadSchemaSQLiteChecker):
     """Check that we correctly fail attempting to update an unknwon format"""
 
     def prepopulate(self):
@@ -197,5 +219,3 @@ class TestEmptySQLiteDB(BaseSQLite):
     @raises(smadata2.db.WrongSchema)
     def test_update(self):
         db = smadata2.db.sqlite.create_or_update(self.dbname)
-
-
