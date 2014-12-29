@@ -23,11 +23,13 @@ import sys
 import argparse
 import time
 import os.path
+import dateutil.parser
 
 import smadata2.config
 import smadata2.db.sqlite
 import smadata2.datetimeutil
 import smadata2.download
+import smadata2.upload
 
 
 def status(config, args):
@@ -67,6 +69,22 @@ def download(config, args):
                 print("No new data")
 
 
+def upload(config, args):
+    db = config.database()
+
+    if args.upload_date is None:
+        print("No date specified", file=sys.stderr)
+        sys.exit(1)
+
+    d = dateutil.parser.parse(args.upload_date).date()
+
+    print("Uploading data for %s" % d)
+
+    for system in config.systems():
+        print("%s" % system.name)
+        smadata2.upload.upload_date(system, d, db)
+
+
 def setupdb(config, args):
     dbname = config.dbname
     if not os.path.exists(dbname):
@@ -98,6 +116,11 @@ def argparser():
     parse_setupdb = subparsers.add_parser("setupdb", help="Create database or"
                                           + " update schema")
     parse_setupdb.set_defaults(func=setupdb)
+
+    parse_upload_date = subparsers.add_parser("upload", help="Upload"
+                                              " power history to pvoutput.org")
+    parse_upload_date.set_defaults(func=upload)
+    parse_upload_date.add_argument("--date", type=str, dest="upload_date")
 
     return parser
 

@@ -1,6 +1,8 @@
 import time
 import datetime
 
+import upload
+
 
 class PVOutputUploader(object):
     def __init__(self, db, system, pvoutput):
@@ -126,30 +128,6 @@ class PVOutputUploader(object):
         else:
             print("No un-uploaded production")
 
-    # trim entries off outputs for a single day that are pointless to upload
-    # @param statuses to trim
-    # @note statuses are trimmed in place
-    # @note each day needs a baseline-no-production-yet datapoint
-    def trim_unwanted_daily_datapoints(self, statuses):
-        while statuses:		# trim statuses off the front
-            if len(statuses) > 1:
-                if statuses[0][1] == statuses[1][1]:
-                    # the next data point is the same as the first datapoint:
-                    statuses.pop(0)
-                else:
-                    break
-            else:
-                break
-        while statuses:		# trim statuses off the front
-            if len(statuses) > 1:
-                if statuses[-1][1] == statuses[-2][1]:
-                    # last datapoint == second last datapoint
-                    statuses.pop()
-                else:
-                    break
-            else:
-                break
-
     # upload statuses for a specific day
     # @param day day to upload for
     # @note The day *must be over* for this not to screw you over.
@@ -157,7 +135,7 @@ class PVOutputUploader(object):
     def upload_statuses_for_day(self, day):
         entries = self.db.get_datapoint_totals_for_day(self.system.inverters(),
                                                        day)
-        self.trim_unwanted_daily_datapoints(entries)
+        upload.trim_date(entries)
         self.send_production(entries)
 
     # print out a message only if we're verbose
