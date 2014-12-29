@@ -91,7 +91,7 @@ class SMAData2SystemConfig(object):
 
     def timezone(self):
         if self.tz is None:
-            return dateutil.tz.tzlocal
+            return dateutil.tz.tzlocal()
         else:
             return dateutil.tz.gettz(self.tz)
 

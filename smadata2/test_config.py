@@ -71,7 +71,7 @@ class TestConfigEmptySystem(BaseTestConfig):
 
     def test_timezone(self):
         system = self.c.systems()[0]
-        assert system.timezone() is dateutil.tz.tzlocal
+        assert isinstance(system.timezone(), dateutil.tz.tzlocal)
 
 
 class TestConfigSimpleSystem(TestConfigEmptySystem):
