@@ -5,10 +5,6 @@ from nose.tools import *
 import smadata2.pvoutputorg
 
 
-class MockError(Exception):
-    pass
-
-
 def requestkey(script, args):
     return (script, frozenset(args.items()))
 
