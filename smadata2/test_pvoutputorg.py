@@ -1,8 +1,41 @@
 #! /usr/bin/env python
 
+import datetime
+
 from nose.tools import *
 
 import smadata2.pvoutputorg
+
+
+def test_parse_date():
+    assert_equals(smadata2.pvoutputorg.parse_date("20130813"),
+                  datetime.date(2013, 8, 13))
+
+
+def test_parse_time():
+    assert_equals(smadata2.pvoutputorg.parse_time("14:37"),
+                  datetime.time(14, 37, 0))
+
+
+def test_parse_datetime():
+    assert_equals(smadata2.pvoutputorg.parse_datetime("20130813", "14:37"),
+                  datetime.datetime(2013, 8, 13, 14, 37, 0))
+
+
+def test_format_date():
+    d = datetime.date(2013, 8, 13)
+    assert_equals(smadata2.pvoutputorg.format_date(d), "20130813")
+
+
+def test_format_time():
+    t = datetime.time(14, 37)
+    assert_equals(smadata2.pvoutputorg.format_time(t), "14:37")
+
+
+def test_format_datetime():
+    dt = datetime.datetime(2013, 8, 13, 14, 37, 0)
+    assert_equals(smadata2.pvoutputorg.format_datetime(dt),
+                  ("20130813", "14:37"))
 
 
 def requestkey(script, args):

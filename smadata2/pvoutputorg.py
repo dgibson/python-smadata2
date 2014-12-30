@@ -30,6 +30,52 @@ class Error(Exception):
     pass
 
 
+def parse_date(pvodate):
+    """ parse a date supplied by pvoutput.org
+    @param pvoutput_date a date in pvoutput API form
+    @return a date object
+    """
+    dt = datetime.datetime.strptime(pvodate, "%Y%m%d")
+    return dt.date()
+
+
+def parse_time(pvodate):
+    """ parse a date supplied by pvoutput.org
+    @param pvoutput_date a date in pvoutput API form
+    @return a date object
+    """
+    dt = datetime.datetime.strptime(pvodate, "%H:%M")
+    return dt.time()
+
+
+# parse a date and time supplied by pvoutput.org
+# @param pvoutput_date a date in pvoutput API form
+# @param pvoutput_time a time in pvoutput API form
+# @return a datetime object
+def parse_datetime(pvodate, pvotime):
+    return datetime.datetime.combine(parse_date(pvodate), parse_time(pvotime))
+
+
+def format_date(d):
+    """ format a date object into a format suitable for the pvoutput API
+    @param d a date object
+    @return a formatted date
+    """
+    return d.strftime("%Y%m%d")
+
+
+def format_time(t):
+    return t.strftime("%H:%M")
+
+
+# format a datetime object into date and time suitable for pvoutput API
+# @param dt a datetime object
+# @return a formatted tuple of strings, (date,time)
+def format_datetime(dt):
+    d, t = dt.date(), dt.time()
+    return format_date(d), format_time(t)
+
+
 class API(object):
     """Represents the pvoutput.org web API, for a particular system
 
@@ -98,7 +144,7 @@ class API(object):
         """
 
         content = self._request("/service/r2/addoutput.jsp", {
-            "d": self.format_date(somedate),
+            "d": format_date(somedate),
             "g": somedelta,
         })
         print("Server said: " + content)
@@ -146,9 +192,8 @@ class API(object):
     # @param date a datetime object for the first time to return (?!)
     # @return None
     def deletestatus(self, date):
-        formatted_date, formatted_time = self.format_date_and_time(date)
         self._request("/service/r2/deletestatus.jsp", {
-            'd': formatted_date,
+            'd': format_date(date),
             # 'h': 1,
         })
 
@@ -158,9 +203,8 @@ class API(object):
         @return a list of lists
         @fixme this is just dodgy, dodgy, dodgy
         """
-        formatted_date, formatted_time = self.format_date_and_time(date)
         opts = {
-            'd': formatted_date,
+            'd': format_date(date),
             'h': 1,
             'limit': 288,
             'asc': 1,
@@ -186,7 +230,7 @@ class API(object):
     # @return a list of lists
     # @fixme this is just dodgy, dodgy, dodgy
     def getstatus(self, fromdatetime, count):
-        fdate, ftime = self.format_date_and_time(fromdatetime)
+        fdate, ftime = format_datetime(fromdatetime)
         opts = {
             'd': fdate,
             't': ftime,
@@ -220,8 +264,8 @@ class API(object):
         if dateto is None:
             raise Error("dateto is null")
 
-        formatted_datefrom = self.format_date(datefrom)
-        formatted_dateto = self.format_date(dateto)
+        formatted_datefrom = format_date(datefrom)
+        formatted_dateto = format_date(dateto)
 
         data = self._request('/service/r2/getmissing.jsp', {
             'df': formatted_datefrom,
@@ -231,45 +275,10 @@ class API(object):
 
         print("missings: " + str(missings))
 
-        dateobjects = [self.parse_date(missingdate)
+        dateobjects = [parse_date(missingdate)
                        for missingdate in missings]
 
         return dateobjects
-
-    # parse a date and time supplied by pvoutput.org
-    # @param pvoutput_date a date in pvoutput API form
-    # @param pvoutput_time a time in pvoutput API form
-    # @return a datetime object
-    def parse_date_and_time(self, pvoutput_date, pvoutput_time):
-        return datetime.datetime(int(pvoutput_date[0:4]),
-                                 int(pvoutput_date[4:6]),
-                                 int(pvoutput_date[6:8]),
-                                 int(pvoutput_time[0:2]),
-                                 int(pvoutput_time[3:5]))
-
-    def parse_date(self, pvoutput_date):
-        """ parse a date supplied by pvoutput.org
-        @param pvoutput_date a date in pvoutput API form
-        @return a date object
-        """
-        return datetime.date(int(pvoutput_date[0:4]),
-                             int(pvoutput_date[4:6]),
-                             int(pvoutput_date[6:8]))
-
-    # format a datetime object into date and time suitable for pvoutput API
-    # @param datetime a datetime object
-    # @return a formatted tuple of strings, (date,time)
-    def format_date_and_time(self, datetime):
-        formatted_date = time.strftime("%Y%m%d", datetime.timetuple())
-        formatted_time = time.strftime("%H:%M", datetime.timetuple())
-        return (formatted_date, formatted_time)
-
-    def format_date(self, date):
-        """ format a date object into a format suitable for the pvoutput API
-        @param date a date object
-        @return a formatted date
-        """
-        return date.strftime("%Y%m%d")
 
     # returns the number of days ago you can set values using the batchstatus
     # script
