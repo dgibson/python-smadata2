@@ -150,34 +150,32 @@ class API(object):
         print("Server said: " + content)
 
     # add a single data point to the server
-    # @param timestamp Unix timestamp to add the data for
-    # @param total_production total system production at this timestamp
+    # @param dt datetime object to add data for (naive, or correct timezone)
+    # @param total_production total system production at date and time dt
     # @return None
     # @fixme check API response
-    def addstatus(self, timestamp, total_production):
+    def addstatus(self, dt, total_production):
         print("addstatus")
 
+        fdate, ftime = format_datetime(dt)
         self._request("/service/r2/addstatus.jsp", {
-            "d": time.strftime("%Y%m%d", time.localtime(timestamp)),
-            "t": time.strftime("%H:%M", time.localtime(timestamp)),
+            "d": fdtate,
+            "t": ftime,
             "c1": 1,
             "v1": total_production,
         })
 
     # upload a whole bunch of statuses at the same time
-    # @param batch a list of lists to upload [[ timestamp,totalprod ], ...]
+    # @param batch a list of lists to upload [[ datetime,totalprod ], ...]
     # @return None
     # @fixme should check server response rather than just printing...
     def addbatchstatus(self, batch):
         new = []
         for prodinfo in batch:
-            timestamp, production = prodinfo
-            new.append([
-                time.strftime("%Y%m%d", time.localtime(timestamp)),
-                time.strftime("%H:%M", time.localtime(timestamp)),
-                str(production),
-                str(-1)
-            ])
+            dt, production = prodinfo
+            fdate, ftime = format_datetime(dt)
+            new.append([fdate, ftime,
+                        str(production), "-1"])
 
         productiondata = ';'.join(','.join(x) for x in new)
 

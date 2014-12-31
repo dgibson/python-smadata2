@@ -17,7 +17,7 @@ class PVOutputUploader(object):
         self.verbose = verbose
 
     # send entries to server
-    # @param entries entries to send [[ timestamp,totalprod ], ...]
+    # @param entries entries to send [[ dt, totalprod ], ...]
     # @fixme sanity checking for too-old-dates should be made by callers
     # @fixme move this batching into pvoutput
     def send_production(self, entries):
@@ -41,7 +41,8 @@ class PVOutputUploader(object):
                     print("Skipping too-old datapoint @" + str(timestamp))
                     continue
 
-            batch.append([timestamp, total_production])
+            dt = datetime.datetime.fromtimestamp(timestamp)
+            batch.append([dt, total_production])
 
             last_total_production = total_production
 
