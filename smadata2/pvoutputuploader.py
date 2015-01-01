@@ -2,6 +2,7 @@ import time
 import datetime
 
 import upload
+import datetimeutil
 
 
 class PVOutputUploader(object):
@@ -134,9 +135,13 @@ class PVOutputUploader(object):
     # @note The day *must be over* for this not to screw you over.
     # @note no way to tell if all inverters have reported in....
     def upload_statuses_for_day(self, day):
-        entries = self.db.get_datapoint_totals_for_day(self.system.inverters(),
-                                                       day)
-        upload.trim_date(entries)
+        date = day.date()
+        ts_start, ts_end = datetimeutil.day_timestamps(date, self.system.timezone())
+        ids = [i.serial for i in self.system.inverters()]
+
+        entries = db.get_aggregate_historic(ts_start, ts_end, ids)
+        entries = prepare_data_for_date(date, results, sc.timezone())
+
         self.send_production(entries)
 
     # print out a message only if we're verbose

@@ -20,27 +20,36 @@
 
 from __future__ import print_function
 
+import datetime
 import datetimeutil
 
 
-def trim_date(results):
-    """Remove the non-generating periods from the beginning and end of day's
-    generation results"""
+def prepare_data_for_date(date, data, tz):
+    """Translate a day's data from the database format to be ready for upload
+    to pvoutput.org"""
 
-
-    while len(results) > 1:
-        if results[0][1] == results[1][1]:
+    # First trim the non-generating periods from the beginning and end
+    while len(data) > 1:
+        if data[0][1] == data[1][1]:
             # the next data point is the same as the first datapoint:
-            results.pop(0)
+            data.pop(0)
         else:
             break
 
-    while len(results) > 1:
-        if results[-1][1] == results[-2][1]:
+    while len(data) > 1:
+        if data[-1][1] == data[-2][1]:
             # last datapoint == second last datapoint
-            results.pop()
+            data.pop()
         else:
             break
+
+    # Now convert the timestamps to datetime objects
+    output = [(datetime.datetime.fromtimestamp(ts, tz), y) for ts, y in data]
+
+    # Sanity check
+    assert all(dt.date() == date for dt, y in output)
+
+    return output
 
 
 def upload_date(sc, date, db):
@@ -49,7 +58,7 @@ def upload_date(sc, date, db):
     ids = [i.serial for i in sc.inverters()]
 
     results = db.get_aggregate_historic(ts_start, ts_end, ids)
-    trim_date(results)
+    results = prepare_data_for_date(date, results, sc.timezone())
 
     for ts, y in results:
         print("%s: %d Wh" % (datetimeutil.format_time(ts), y))

@@ -12,6 +12,7 @@ from nose.tools import *
 
 import smadata2.db
 import smadata2.db.mock
+from smadata2 import check
 
 def removef(filename):
     try:
@@ -126,17 +127,12 @@ class AggregateChecks(BaseDBChecker):
         self.dawn = 8*3600
         self.dusk = 20*3600
 
-        for ts in range(0, self.dawn, 300):
-            self.db.add_historic(self.serial1, ts, 0)
-            self.db.add_historic(self.serial2, ts, 0)
+        sampledata = check.generate_linear(0, self.dawn, self.dusk, 24*3600,
+                                           0, 1)
 
-        for ts in range(self.dawn, self.dusk, 300):
-            self.db.add_historic(self.serial1, ts, ts - self.dawn)
-            self.db.add_historic(self.serial2, ts, 2*(ts - self.dawn))
-
-        for ts in range(self.dusk, 24*3600, 300):
-            self.db.add_historic(self.serial1, ts, self.dusk - self.dawn)
-            self.db.add_historic(self.serial2, ts, 2*(self.dusk - self.dawn))
+        for ts, y in sampledata:
+            self.db.add_historic(self.serial1, ts, y)
+            self.db.add_historic(self.serial2, ts, 2*y)
 
     def test_basic(self):
         for ts in range(0, self.dawn, 300):
