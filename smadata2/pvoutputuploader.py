@@ -157,7 +157,7 @@ class PVOutputUploader(object):
         #     cumulative = prod[1]
         #     print("timestamp=%s cumulative=%s" % (timestamp, cumulative))
 
-        theirdata = self.pvoutput.getstatusx(date, None, None)
+        theirdata = self.pvoutput.getstatus(date)
         # for output in theirdata:
         #     print("date=%s time=%s production=%s" \
         #            % (output[0], output[1], output[2]))
@@ -172,6 +172,7 @@ class PVOutputUploader(object):
                 break
             mine = mydata[0]
             my_timestamp = mine[0]
+            my_datetime = datetime.datetime.fromtimestamp(my_timestamp)
             my_production = mine[1]
 
             if first_production is None:
@@ -184,45 +185,36 @@ class PVOutputUploader(object):
             my_last_delta = my_delta
 
             theirs = theirdata[0]
-            their_date = theirs[0]
-            their_time = theirs[1]
-            their_delta = theirs[2]
-            their_datetime = self.pvoutput.parse_date_and_time(their_date,
-                                                               their_time)
-            their_timestamp = time.mktime(their_datetime.timetuple())
-            # print("their_timestamp=%d their_delta=%d" \
-            #       % (their_timestamp, their_delta))
-            if their_timestamp > my_timestamp:
+            their_datetime = theirs[0]
+            their_delta = theirs[1]
+            if their_datetime > my_datetime:
                 mydata.pop(0)
                 if (my_delta != 0):
                     # fred = datetime.datetime.utcfromtimestamp(my_timestamp)
-                    x = time.strftime("%Y-%m-%d %H:%M",
-                                      time.localtime(my_timestamp))
-                    print("Extra datapoint from me: %s (%s) %s"
-                          % (my_timestamp, x, my_delta))
+                    print("Extra datapoint from me: %s %s"
+                          % (my_datetime, my_delta))
+            elif their_datetime < my_datetime:
+                print("Extra datapoint from them: %s %s"
+                      % (their_datetime, their_delta))
+                theirdata.pop(0)
             else:
-                if their_timestamp < my_timestamp:
-                    print("Extra datapoint from them: %s %s %s"
-                          % (their_date, their_time, their_delta))
-                    theirdata.pop(0)
+                if their_delta != my_delta:
+                    print(("production mismatch (timestamp=%d)"
+                           + " (them=%d us=%d)")
+                          % (my_datetime, their_delta, my_delta))
                 else:
-                    if their_delta != my_delta:
-                        print(("production mismatch (timestamp=%d)"
-                               + " (them=%d us=%d)")
-                              % (my_timestamp, their_delta, my_delta))
-                    else:
-                        self.debug("ALL GOOD (them=%d us=%d) (them=%d us=%d)"
-                                   % (their_timestamp, my_timestamp,
-                                      their_delta, my_delta))
-                    theirdata.pop(0)
-                    mydata.pop(0)
+                    self.debug("ALL GOOD (them=%d us=%d) (them=%d us=%d)"
+                               % (their_datetime, my_datetime,
+                                  their_delta, my_delta))
+                theirdata.pop(0)
+                mydata.pop(0)
 
         if theirdata:
             print("There are %d on pvoutput.org which aren't in our data"
                   % len(theirdata))
             for output in theirdata:
-                self.debug("their extra: date=%s time=%s production=%s"
-                           % (output[0], output[1], output[2]))
+                self.debug("their extra: datetime=%s production=%s"
+                           % (output[0], output[1]))
 
         printed_mydata_warning_once = False
         if mydata:

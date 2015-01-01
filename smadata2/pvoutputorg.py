@@ -135,6 +135,110 @@ class API(object):
         return ("SID %s: \"%s\" (%d W) [donation mode: %s]"
                 % (self.sid, self.name, self.system_size, self.donation_mode))
 
+    #
+    # Methods dealing with live status information
+    #
+    def status_batchsize(self):
+        """ number of statuses allowed in a batch
+        @return the number of statuses allowed in a batch
+        """
+        if self.donation_mode:
+            return 100
+        return 30
+
+    def addstatus(self, dt, total_production):
+        """add a single data point to the server
+        @param dt datetime object to add data for (naive, or correct timezone)
+        @param total_production total system production at date and time dt
+        @return None
+        @fixme check API response"""
+        fdate, ftime = format_datetime(dt)
+        self._request("/service/r2/addstatus.jsp", {
+            "d": fdate,
+            "t": ftime,
+            "c1": 1,
+            "v1": total_production,
+            "v2": -1,
+        })
+
+    def addbatchstatus(self, batch):
+        """upload a whole bunch of statuses at the same time
+        @param batch a list of lists to upload [[ datetime,totalprod ], ...]
+        @return None
+        @fixme should check server response rather than just printing..."""
+        data = [format_datetime(dt) + (str(y), "-1")
+                for dt, y in batch]
+        data = ";".join(",".join(x) for x in data)
+
+        results = self._request("/service/r2/addbatchstatus.jsp", {
+            "data": data,
+            "c1": 1
+        })
+        results = results.split(";")
+        if len(results) != len(batch):
+            raise Error("Unexpected number of results from addbatchstatus")
+        
+        for r in results:
+            d, t, status = r.split(",")
+            if status != "1":
+                raise Error("Failed to upload status for %s %s" % (d, t))
+
+    def deletestatus(self, dt):
+        """Delete status information
+        @param dt a date or datetime object
+        @return None"""
+        if isinstance(dt, datetime.datetime):
+            fdate, ftime = format_datetime(dt)
+            opts = {
+                "d": fdate,
+                "t": ftime,
+            }
+        elif isinstance(dt, datetime.date):
+            opts = {
+                "d": format_date(dt),
+            }
+        else:
+            raise TypeError
+
+        self._request("/service/r2/deletestatus.jsp", opts)
+
+    def getstatus(self, date, from_=None, to=None):
+        opts = {
+            "d": format_date(date),
+            "h": 1,
+            "limit": 288,
+            "asc": 1,
+        }
+        if from_ is not None:
+            opts["from"] = format_time(from_)
+
+        if to is not None:
+            opts["to"] = format_time(to)
+
+        try:
+            data = self._request('/service/r2/getstatus.jsp', opts)
+        except urllib2.HTTPError as e:
+            # API gives an error if no data is present
+            if e.code == 400:
+                message = e.read()
+                if message == "Bad request 400: No status found":
+                    return None
+            # Anything else, propagate the error
+            raise
+
+        data = data.split(';')
+
+        ret = []
+        for output in data:
+            vals = output.split(',')
+            # this throws away most of the data returned:
+            dt = parse_datetime(vals[0], vals[1])
+            ret.append((dt, int(vals[2])))
+
+        return ret
+
+    
+    ### Here be dragons...
     def addoutput(self, somedate, somedelta):
         """ add a daily output to pvoutput
         @param date to add output for
@@ -148,108 +252,6 @@ class API(object):
             "g": somedelta,
         })
         print("Server said: " + content)
-
-    # add a single data point to the server
-    # @param dt datetime object to add data for (naive, or correct timezone)
-    # @param total_production total system production at date and time dt
-    # @return None
-    # @fixme check API response
-    def addstatus(self, dt, total_production):
-        print("addstatus")
-
-        fdate, ftime = format_datetime(dt)
-        self._request("/service/r2/addstatus.jsp", {
-            "d": fdtate,
-            "t": ftime,
-            "c1": 1,
-            "v1": total_production,
-        })
-
-    # upload a whole bunch of statuses at the same time
-    # @param batch a list of lists to upload [[ datetime,totalprod ], ...]
-    # @return None
-    # @fixme should check server response rather than just printing...
-    def addbatchstatus(self, batch):
-        new = []
-        for prodinfo in batch:
-            dt, production = prodinfo
-            fdate, ftime = format_datetime(dt)
-            new.append([fdate, ftime,
-                        str(production), "-1"])
-
-        productiondata = ';'.join(','.join(x) for x in new)
-
-        print("productiondata=" + productiondata)
-        content = self._request("/service/r2/addbatchstatus.jsp", {
-            "data": productiondata,
-            "c1": 1
-        })
-        print("Content returned from server: %s" % content)
-
-    # delete a day's status
-    # @param date a datetime object for the first time to return (?!)
-    # @return None
-    def deletestatus(self, date):
-        self._request("/service/r2/deletestatus.jsp", {
-            'd': format_date(date),
-            # 'h': 1,
-        })
-
-    def getstatusx(self, date, timefrom, timeto):
-        """ retrieve data for a time period - always from midnight ATM
-        @param date a datetime object for the first time to return (?!)
-        @return a list of lists
-        @fixme this is just dodgy, dodgy, dodgy
-        """
-        opts = {
-            'd': format_date(date),
-            'h': 1,
-            'limit': 288,
-            'asc': 1,
-        }
-        if timefrom is not None:
-            opts['from'] = timefrom
-            if timeto is not None:
-                opts['to'] = timeto
-
-        data = self._request('/service/r2/getstatus.jsp', opts)
-        outputs = data.split(';')
-        ret = []
-        for output in outputs:
-            outputentries = output.split(',')
-            # this throws away most of the data returned:
-            ret.append([outputentries[0], outputentries[1],
-                        int(outputentries[2])])
-        return ret
-
-    # retrieve data for a time period - always from midnight ATM
-    # @param fromdatetime first datetime to return status for
-    # @param number of entries to return
-    # @return a list of lists
-    # @fixme this is just dodgy, dodgy, dodgy
-    def getstatus(self, fromdatetime, count):
-        fdate, ftime = format_datetime(fromdatetime)
-        opts = {
-            'd': fdate,
-            't': ftime,
-            'h': 1,
-            'limit': count,
-            'asc': 1,
-        }
-        # if timefrom is not None:
-        #     opts['from'] = timefrom
-        #     if timeto is not None:
-        #         opts['to'] = timeto
-
-        data = self._request('/service/r2/getstatus.jsp', opts)
-        outputs = data.split(';')
-        ret = []
-        for output in outputs:
-            outputentries = output.split(',')
-            # this throws away most of the data returned:
-            ret.append([outputentries[0], outputentries[1],
-                        int(outputentries[2])])
-        return ret
 
     def getmissing(self, datefrom, dateto):
         """ Get Missing service retrieves a list of output dates missing
@@ -286,14 +288,6 @@ class API(object):
         if self.donation_mode:
             return 90
         return 14
-
-    def batchstatus_count_accepted_by_api(self):
-        """ number of statuses allowed in a batch
-        @return the number of statuses allowed in a batch
-        """
-        if self.donation_mode:
-            return 100
-        return 30
 
 
 def main():

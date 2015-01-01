@@ -10,6 +10,9 @@ PYFILES = $(SCRIPTS) $(wildcard smadata2/*.py)
 all: check
 
 check:
+	$(NOSE) $(NOSEFLAGS) -a '!pvoutput.org'
+
+checkall:
 	$(NOSE) $(NOSEFLAGS)
 
 pep8:
