@@ -6,12 +6,14 @@ import unittest
 import time
 import datetime
 import dateutil.tz
+import json
 
 from nose.tools import *
 
 import smadata2.upload
 import smadata2.check
-
+import smadata2.db.sqlite
+from smadata2.db.tests import SQLiteDBChecker
 
 def test_prepare1():
     dawn = 8*3600
@@ -31,3 +33,45 @@ def test_prepare1():
         assert_equals(dt, dtdawn + datetime.timedelta(minutes=5*i))
         assert_equals(y, 300*i)
 
+
+class TestLoad(SQLiteDBChecker):
+    def test_load(self):
+        sysjson = json.loads("""{
+            "name": "Test System",
+            "timezone": "Australia/Sydney",
+            "inverters": [
+                {
+                    "name": "Test Inverter",
+                    "bluetooth": "00:00:00:00:00:00",
+                    "serial": "TESTSERIAL",
+                    "start-time": "2010-01-01"
+                }
+            ]
+        }""")
+        sc = smadata2.config.SMAData2SystemConfig(0, sysjson)
+
+        date = datetime.date(2010, 2, 7)
+        midnight = datetime.time(0, tzinfo=sc.timezone())
+        dtstart = datetime.datetime.combine(date, midnight)
+
+        daystart = smadata2.datetimeutil.totimestamp(dtstart)
+        dawn = daystart + 8*3600
+        dusk = daystart + 20*3600
+        dayend = daystart + 24*3600
+
+        data = smadata2.check.generate_linear(daystart, dawn, dusk, dayend, 0, 1)
+
+        for ts, y in data:
+            self.db.add_historic("TESTSERIAL", ts, y)
+
+        outdata = smadata2.upload.load_data_for_date(self.db, sc, date)
+
+        assert_equals(len(outdata), (dusk - dawn) / 300 + 1)
+
+        dtdawn = datetime.time(8, tzinfo=sc.timezone())
+        dtdawn = datetime.datetime.combine(date, dtdawn)
+
+        for i, (dt, y) in enumerate(outdata):
+            xdt = dtdawn + datetime.timedelta(minutes=5*i)
+            assert_equals(dt, xdt)
+            assert_equals(y, i*300)

@@ -52,13 +52,17 @@ def prepare_data_for_date(date, data, tz):
     return output
 
 
-def upload_date(sc, date, db):
+def load_data_for_date(db, sc, date):
     ts_start, ts_end = datetimeutil.day_timestamps(date, sc.timezone())
 
     ids = [i.serial for i in sc.inverters()]
 
     results = db.get_aggregate_historic(ts_start, ts_end, ids)
-    results = prepare_data_for_date(date, results, sc.timezone())
+    return prepare_data_for_date(date, results, sc.timezone())
+
+
+def upload_date(db, sc, date):
+    data = load_data_for_date(db, sc, date)
 
     for ts, y in results:
         print("%s: %d Wh" % (datetimeutil.format_time(ts), y))
