@@ -25,10 +25,11 @@ def generate_linear(start, dawn, dusk, end, startyield, rate):
     for ts in range(start, dawn, 300):
         results.append((ts, startyield))
 
-    for ts in range(dawn, dusk, 300):
-        results.append((ts, (ts - dawn)*rate))
+    for i, ts in enumerate(range(dawn, dusk, 300)):
+        results.append((ts, i))
 
-    for ts in range(dusk, end, 300):
-        results.append((ts, (dusk - dawn)*rate))
+    lastval = results[-1][1]
+    for i, ts in enumerate(range(dusk, end, 300)):
+        results.append((ts, lastval))
 
     return results

@@ -28,10 +28,10 @@ def test_prepare1():
     dtdawn = datetime.datetime(1970, 1, 1, 8, tzinfo=dateutil.tz.tzutc())
     dtdusk = datetime.datetime(1970, 1, 1, 20, tzinfo=dateutil.tz.tzutc())
 
-    assert_equals(len(output), ((dusk - dawn) / 300) + 1)
+    assert_equals(len(output), (dusk - dawn) / 300)
     for i, (dt, y) in enumerate(output):
         assert_equals(dt, dtdawn + datetime.timedelta(minutes=5*i))
-        assert_equals(y, 300*i)
+        assert_equals(y, i)
 
 
 class TestLoad(SQLiteDBChecker):
@@ -66,7 +66,7 @@ class TestLoad(SQLiteDBChecker):
 
         outdata = smadata2.upload.load_data_for_date(self.db, sc, date)
 
-        assert_equals(len(outdata), (dusk - dawn) / 300 + 1)
+        assert_equals(len(outdata), (dusk - dawn) / 300)
 
         dtdawn = datetime.time(8, tzinfo=sc.timezone())
         dtdawn = datetime.datetime.combine(date, dtdawn)
@@ -74,4 +74,4 @@ class TestLoad(SQLiteDBChecker):
         for i, (dt, y) in enumerate(outdata):
             xdt = dtdawn + datetime.timedelta(minutes=5*i)
             assert_equals(dt, xdt)
-            assert_equals(y, i*300)
+            assert_equals(y, i)

@@ -142,19 +142,20 @@ class AggregateChecks(BaseDBChecker):
             assert_equals(y1, 0)
             assert_equals(y2, 0)
 
-        for ts in range(self.dawn, self.dusk, 300):
+        for i, ts in enumerate(range(self.dawn, self.dusk, 300)):
             y1 = self.db.get_one_historic(self.serial1, ts)
             y2 = self.db.get_one_historic(self.serial2, ts)
 
-            assert_equals(y1, ts - self.dawn)
-            assert_equals(y2, 2*(ts - self.dawn))
+            assert_equals(y1, i)
+            assert_equals(y2, 2*i)
 
+        val = (self.dusk - self.dawn - 1) / 300
         for ts in range(self.dusk, 24*3600, 300):
             y1 = self.db.get_one_historic(self.serial1, ts)
             y2 = self.db.get_one_historic(self.serial2, ts)
 
-            assert_equals(y1, self.dusk - self.dawn)
-            assert_equals(y2, 2*(self.dusk - self.dawn))
+            assert_equals(y1, val)
+            assert_equals(y2, 2*val)
 
     def check_aggregate_range(self, from_, to_):
         results = self.db.get_aggregate_historic(from_, to_,
@@ -170,9 +171,9 @@ class AggregateChecks(BaseDBChecker):
             if ts < self.dawn:
                 assert_equals(y, 0)
             elif ts < self.dusk:
-                assert_equals(y, 3*(ts - self.dawn))
+                assert_equals(y, 3*((ts - self.dawn) / 300))
             else:
-                assert_equals(y, 3*(self.dusk - self.dawn))
+                assert_equals(y, 3*((self.dusk - self.dawn - 1) / 300))
 
     def test_aggregate(self):
         yield self.check_aggregate_range, 0, 24*3600
