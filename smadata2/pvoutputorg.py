@@ -183,6 +183,20 @@ class API(object):
             if status != "1":
                 raise Error("Failed to upload status for %s %s" % (d, t))
 
+    def addstatus_bulk(self, data):
+        """Upload a whole bunch of statuses, splitting into multiple
+        requests as necessary"""
+
+        batchsize = self.status_batchsize()
+
+        done = 0
+        while done < len(data):
+            batch = data[done:done+batchsize]
+            print("BATCH %s" % batch)
+            self.addbatchstatus(batch)
+            time.sleep(60)
+            done += len(batch)
+
     def deletestatus(self, dt):
         """Delete status information
         @param dt a date or datetime object

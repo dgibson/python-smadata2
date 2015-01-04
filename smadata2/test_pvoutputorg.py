@@ -3,12 +3,16 @@
 import os
 import datetime
 import time
+import dateutil
 
 from nose.tools import *
 from nose.plugins.attrib import attr
 
 import smadata2.config
 import smadata2.pvoutputorg
+import smadata2.datetimeutil
+import smadata2.check
+import smadata2.upload
 
 
 def test_parse_date():
@@ -135,4 +139,28 @@ class TestRealAPI(object):
             assert_equals(results[i][0], batch[i][0])
             assert_equals(results[i][1], i)
 
+    def test_addbulk(self):
+        tz = dateutil.tz.tzutc()
 
+        ts_start, ts_end = smadata2.datetimeutil.day_timestamps(self.date, tz)
+        ts_dawn = ts_start + 8*3600
+        ts_dusk = ts_start + 20*3600
+
+        data = smadata2.check.generate_linear(ts_start, ts_dawn,
+                                              ts_dusk, ts_end, 0, 1)
+        output = smadata2.upload.prepare_data_for_date(self.date, data, tz)
+
+        self.api.addstatus_bulk(output)
+        self.delay()
+
+        results = self.api.getstatus(self.date)
+
+        for i, r in enumerate(results):
+            print(i, r)
+
+        assert_equals(len(results), len(output))
+        for i, (dt, y) in enumerate(results):
+            xdt, xy = output[i]
+            assert_equals(y, xy)
+            xdt = xdt.replace(tzinfo=None)
+            assert_equals(dt, xdt)
