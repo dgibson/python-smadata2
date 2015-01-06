@@ -157,6 +157,11 @@ class AggregateChecks(BaseDBChecker):
             assert_equals(y1, val)
             assert_equals(y2, 2*val)
 
+    def test_aggregate_one(self):
+        val = self.db.get_aggregate_one_historic(self.dusk,
+                                                 (self.serial1, self.serial2))
+        assert_equals(val, 3*((self.dusk - self.dawn - 2) / 300))
+
     def check_aggregate_range(self, from_, to_):
         results = self.db.get_aggregate_historic(from_, to_,
                                                  (self.serial1, self.serial2))

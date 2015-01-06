@@ -90,6 +90,18 @@ class SQLiteDatabase(BaseDatabase):
         r = c.fetchone()
         return r[0]
 
+    def get_aggregate_one_historic(self, ts, ids):
+        c = self.conn.cursor()
+        c.execute("SELECT sum(total_yield) FROM generation"
+                  " WHERE inverter_serial IN(" + ",".join("?" * len(ids)) + ")"
+                  " AND timestamp = ?"
+                  " GROUP BY timestamp", tuple(ids) + (ts,))
+        r = c.fetchall()
+        if not r:
+            return None
+        assert(len(r) == 1)
+        return r[0][0]
+
     def get_aggregate_historic(self, from_ts, to_ts, ids):
         c = self.conn.cursor()
         c.execute("SELECT timestamp, sum(total_yield) FROM generation"

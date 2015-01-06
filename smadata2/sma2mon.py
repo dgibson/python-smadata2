@@ -23,6 +23,7 @@ import sys
 import argparse
 import time
 import os.path
+import datetime
 import dateutil.parser
 
 import smadata2.config
@@ -48,6 +49,32 @@ def status(config, args):
             ttime, total = sma.total_yield()
             print("\t\tTotal generation at %s:\t%d Wh"
                   % (smadata2.datetimeutil.format_time(ttime), total))
+
+
+def yieldat(config, args):
+    db = config.database()
+
+    if args.datetime is None:
+        print("No date specified", file=sys.stderr)
+        sys.exit(1)
+
+    dt = dateutil.parser.parse(args.datetime)
+
+    for system in config.systems():
+        print("%s:" % system.name)
+
+        if dt.tzinfo is None:
+            sdt = datetime.datetime(dt.year, dt.month, dt.day,
+                                    dt.hour, dt.minute, dt.second,
+                                    dt.microsecond, tzinfo=system.timezone())
+        else:
+            sdt = dt
+
+        ts = smadata2.datetimeutil.totimestamp(sdt)
+        ids = [inv.serial for inv in system.inverters()]
+
+        val = db.get_aggregate_one_historic(ts, ids)
+        print("\tTotal generation at %s: %d Wh" % (sdt, val))
 
 
 def download(config, args):
@@ -107,6 +134,11 @@ def argparser():
 
     parse_status = subparsers.add_parser("status", help="Read inverter status")
     parse_status.set_defaults(func=status)
+
+    parse_yieldat = subparsers.add_parser("yieldat", help="Get production at"
+                                          " a given date")
+    parse_yieldat.set_defaults(func=yieldat)
+    parse_yieldat.add_argument(type=str, dest="datetime")
 
     parse_download = subparsers.add_parser("download",
                                            help="Download power history"

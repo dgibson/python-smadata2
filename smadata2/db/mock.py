@@ -42,6 +42,11 @@ class MockDatabase(BaseDatabase):
         else:
             return None
 
+    def get_aggregate_one_historic(self, ts, ids):
+        vals = set(y for s, t, y in self.historic
+                   if (t == ts) and (s in ids))
+        return sum(vals)
+
     def get_aggregate_historic(self, from_ts, to_ts, ids):
         rd = {}
         for s, t, y in self.historic:
