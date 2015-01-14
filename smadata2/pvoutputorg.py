@@ -192,7 +192,6 @@ class API(object):
         done = 0
         while done < len(data):
             batch = data[done:done+batchsize]
-            print("BATCH %s" % batch)
             self.addbatchstatus(batch)
             time.sleep(60)
             done += len(batch)

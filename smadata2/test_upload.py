@@ -20,7 +20,7 @@ def test_prepare1():
     dusk = 20*3600
     dayend = 24*3600
 
-    data = smadata2.check.generate_linear(0, dawn, dusk, dayend, 0, 1)
+    data = smadata2.check.generate_linear(0, dawn, dusk, dayend, 12345, 1)
 
     output = smadata2.upload.prepare_data_for_date(datetime.date(1970, 1, 1),
                                                    data, dateutil.tz.tzutc())
@@ -31,7 +31,7 @@ def test_prepare1():
     assert_equals(len(output), (dusk - dawn) / 300)
     for i, (dt, y) in enumerate(output):
         assert_equals(dt, dtdawn + datetime.timedelta(minutes=5*i))
-        assert_equals(y, i)
+        assert_equals(y, i + 12345)
 
 
 class TestLoad(SQLiteDBChecker):
@@ -59,7 +59,7 @@ class TestLoad(SQLiteDBChecker):
         dusk = daystart + 20*3600
         dayend = daystart + 24*3600
 
-        data = smadata2.check.generate_linear(daystart, dawn, dusk, dayend, 0, 1)
+        data = smadata2.check.generate_linear(daystart, dawn, dusk, dayend, 12345, 1)
 
         for ts, y in data:
             self.db.add_historic("TESTSERIAL", ts, y)
@@ -74,4 +74,4 @@ class TestLoad(SQLiteDBChecker):
         for i, (dt, y) in enumerate(outdata):
             xdt = dtdawn + datetime.timedelta(minutes=5*i)
             assert_equals(dt, xdt)
-            assert_equals(y, i)
+            assert_equals(y, i + 12345)
