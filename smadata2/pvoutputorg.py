@@ -250,6 +250,35 @@ class API(object):
 
         return ret
 
+    def getstatus_date_latest(self, date):
+        opts = {
+            "d": format_date(date),
+            "h": 1,
+            "limit": 1,
+            "asc": 0,
+        }
+
+        try:
+            data = self._request('/service/r2/getstatus.jsp', opts)
+        except urllib2.HTTPError as e:
+            # API gives an error if no data is present
+            if e.code == 400:
+                message = e.read()
+                if message == "Bad request 400: No status found":
+                    return None
+            # Anything else, propagate the error
+            raise
+
+        data = data.split(';')
+        if len(data) != 1:
+            raise Error("getstatus with limit 1 returned multiple records")
+
+        vals = data[0].split(',')
+        # this throws away most of the data returned:
+        dt = parse_datetime(vals[0], vals[1])
+        y = int(vals[2])
+
+        return dt, y
     
     ### Here be dragons...
     def addoutput(self, somedate, somedelta):

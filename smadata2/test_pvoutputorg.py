@@ -90,7 +90,7 @@ class TestRealAPI(object):
         self.date = datetime.date.today() - datetime.timedelta(days=1)
 
     def delay(self):
-        time.sleep(5)
+        time.sleep(10)
 
     def setUp(self):
         self.api = self.config.pvoutput_connect(self.system)
@@ -162,3 +162,28 @@ class TestRealAPI(object):
             assert_equals(y, xy - startyield)
             xdt = xdt.replace(tzinfo=None)
             assert_equals(dt, xdt)
+
+    def test_getstatus_date_latest(self):
+        assert(self.api.getstatus_date_latest(self.date) is None)
+
+        dt0 = datetime.datetime.combine(self.date, datetime.time(10, 35))
+
+        self.api.addstatus(dt0, 1000)
+        self.delay()
+
+        res = self.api.getstatus_date_latest(self.date)
+        assert_equals(res[0], dt0)
+
+        batch = []
+        for m in range(0, 46, 5):
+            t = datetime.time(14, m)
+            dt = datetime.datetime.combine(self.date, t)
+            batch.append((dt, 1000))
+
+        assert_equals(dt.minute, 45)
+
+        self.api.addstatus_bulk(batch)
+        self.delay()
+
+        res = self.api.getstatus_date_latest(self.date)
+        assert_equals(res[0], dt)
