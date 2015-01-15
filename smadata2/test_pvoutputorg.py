@@ -76,7 +76,7 @@ class TestMockAPI(object):
 
 
 @attr("pvoutput.org")
-class TestRealAPI(object):
+class RealAPIChecker(object):
     CONFIGFILE = "smadata2-test-pvoutput.json"
 
     def __init__(self):
@@ -103,6 +103,9 @@ class TestRealAPI(object):
         self.api.deletestatus(self.date)
         self.delay()
         
+
+@attr("pvoutput.org")
+class TestRealAPI(RealAPIChecker):
     def test_trivial(self):
         assert isinstance(self.api, smadata2.pvoutputorg.API)
 
