@@ -1,0 +1,3 @@
+python-dateutil
+coverage
+PyBluez
