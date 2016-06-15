@@ -18,7 +18,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 from __future__ import print_function
-
+import time
 
 def download_inverter(ic, db):
     lasttime = db.get_last_historic(ic.serial)
@@ -29,7 +29,7 @@ def download_inverter(ic, db):
 
     sma = ic.connect_and_logon()
 
-    data = ic.historic(lasttime+1, now)
+    data = sma.historic(lasttime+1, now)
 
     for timestamp, total in data:
         db.add_historic(ic.serial, timestamp, total)
