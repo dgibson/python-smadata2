@@ -176,7 +176,7 @@ Command: Total Yield
 --------------------
 
 COMMAND:
-	A2:		E0
+	A2:		A0
 	B1,B2:		00 00
 	C1,C2:		00 00
 	Type:		0200
@@ -209,15 +209,31 @@ RESPONSE:
 Command: Historic data (5 minute intervals)
 -------------------------------------------
 
-Command: Daily  Yield
----------------------
-
 COMMAND:
 	A2:		E0
 	B1,B2:		00 00
 	C1,C2:		00 00
 	Type:		0200
 	Subtype:	7000
+	Arg1:		start time
+	Arg2:		end time
+
+RESPONSE:
+	PAYLOAD:
+		0..3	timestamp (LE)
+		4..7	yield in Wh (LE)
+		8..11	unknown
+		PATTERN REPEATS
+
+Command: Historic data (daily intervals)
+----------------------------------------
+
+COMMAND:
+	A2:		E0
+	B1,B2:		00 00
+	C1,C2:		00 00
+	Type:		0200
+	Subtype:	7020
 	Arg1:		start time (unix date, LE)
 	Arg2:		end time (unix date, LE)
 
@@ -227,3 +243,27 @@ RESPONSE:
 		4..7	total yield at that time in Wh (LE)
 		8..11	???
 		...	Pattern repeated
+
+Command: Set time
+-----------------
+
+COMMAND:
+	A2:		A0
+	B1,B2:		00 00
+	C1,C2:		00 00
+	Type:		020A
+	Subtype:	F000
+	Arg1:		0x00236d00
+	Arg2:		0x00236d00
+	PAYLOAD:
+		0..3	00 6D 23 00
+		4..7	timestamp
+		8..11	timestamp (again)
+		12..15	timestamp (again)
+		16..17	localtime offset from UTC in seconds
+		18..19	00 00
+		20..23	30 FE 7E 00
+		24..27	01 00 00 00
+
+RESPONSE:
+	PAYLOAD:
