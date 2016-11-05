@@ -1,6 +1,10 @@
 {
     "database": {
-        "filename": "~/.smadata2.sqlite"
+        "type": "mysql",
+        "host": "127.0.0.1",
+        "user": "myuser",
+        "password": "123456",
+        "database": "smadata"
     },
     "pvoutput.org": {
         "apikey": "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
