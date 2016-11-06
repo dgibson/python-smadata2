@@ -17,8 +17,14 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import print_function
+import MySQLdb
+from sql import *
 
-from base import *
-from sqlite import *
-from mysql import *
+class MySQLDatabase(SQLDatabase):
+    def __init__(self, host, user, password, database):
+        super(MySQLDatabase, self).__init__()
+
+        self.conn = MySQLdb.connect(host, user, password, database)
+        self.placeholder = "%s"
+
+        # TODO: check schema?

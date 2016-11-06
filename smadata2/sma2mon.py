@@ -50,6 +50,17 @@ def status(config, args):
             print("\t\tTotal generation at %s:\t%d Wh"
                   % (smadata2.datetimeutil.format_time(ttime), total))
 
+def record_now(config, args):
+    db = config.database()
+    for system in config.systems():
+        for inv in system.inverters():
+            sma = inv.connect_and_logon()
+            ttime, total = sma.total_yield()
+            timestamp = int(time.time())
+
+            db.add_historic(inv.serial, timestamp, total)
+
+    db.commit()
 
 def yieldat(config, args):
     db = config.database()
@@ -134,6 +145,10 @@ def argparser():
 
     parse_status = subparsers.add_parser("status", help="Read inverter status")
     parse_status.set_defaults(func=status)
+
+    parse_record_now = subparsers.add_parser("record_now", help="Read current inverter totals and "
+                                             "write them to the database. (ignoring inverter time)")
+    parse_record_now.set_defaults(func=record_now)
 
     parse_yieldat = subparsers.add_parser("yieldat", help="Get production at"
                                           " a given date")

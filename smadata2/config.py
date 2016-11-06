@@ -113,12 +113,20 @@ class SMAData2Config(object):
 
         alljson = json.load(f)
 
-        dbname = os.path.expanduser("~/.smadata2.sqlite")
+        self.dbname = os.path.expanduser("~/.smadata2.sqlite")
+        self.dbtype = "sqlite"
         if "database" in alljson:
             dbjson = alljson["database"]
-            if "filename" in dbjson:
-                dbname = dbjson["filename"]
-        self.dbname = os.path.expanduser(dbname)
+            if "type" in dbjson:
+                self.dbtype = dbjson["type"]
+            if self.dbtype == 'sqlite':
+                if "filename" in dbjson:
+                    self.dbname = os.path.expanduser(dbjson["filename"])
+            else:
+                self.dbhost = dbjson["host"]
+                self.dbuser = dbjson["user"]
+                self.dbpass = dbjson["password"]
+                self.dbname = dbjson["database"]
 
         if "pvoutput.org" in alljson:
             pvojson = alljson["pvoutput.org"]
@@ -142,7 +150,10 @@ class SMAData2Config(object):
                                self.pvoutput_apikey, system.pvoutput_sid)
 
     def database(self):
-        return db.SQLiteDatabase(self.dbname)
+        if self.dbtype == "sqlite":
+            return db.SQLiteDatabase(self.dbname)
+        else:
+            return db.MySQLDatabase(self.dbhost, self.dbuser, self.dbpass, self.dbname)
 
 
 if __name__ == '__main__':
