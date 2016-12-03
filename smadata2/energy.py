@@ -38,8 +38,10 @@ class Uploader(object):
         headers = { "Content-type": "application/json", "X-Api-Key": self.api_key }
         conn = httplib.HTTPSConnection(self.base_uri)
         conn.request("POST", path, body, headers)
-        if conn.getresponse() == 201:
+        if conn.getresponse().status == 201:
             last_entry_time = entries[-1][0]
             self.db.energy_set_last_datetime_uploaded(inverter.serial, last_entry_time)
+        else:
+            print "Response did not indicate success."
 
         conn.close()
