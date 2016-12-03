@@ -162,7 +162,7 @@ class SMAData2Config(object):
             return db.MySQLDatabase(self.dbhost, self.dbuser, self.dbpass, self.dbname)
 
     def energy_uploader(self):
-        return energy.Uploader(self.database, self.energy_server, self.energy_apikey)
+        return energy.Uploader(self.database(), self.energy_server, self.energy_apikey)
 
 if __name__ == '__main__':
     if sys.argv[1:]:
