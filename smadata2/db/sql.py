@@ -170,7 +170,6 @@ class SQLDatabase(BaseDatabase):
 
     def energy_set_last_datetime_uploaded(self, sid, value):
         c = self.conn.cursor()
-        self.pvoutput_maybe_init_system(sid)
         c.execute(self.ph("REPLACE INTO energyupload(sid, last_datetime_uploaded) "
                           "VALUES(%(ph)s, %(ph)s)"), (sid, value))
         self.commit()
