@@ -62,6 +62,13 @@ def record_now(config, args):
 
     db.commit()
 
+def upload_energy(config, args):
+    uploader = config.energy_uploader()
+    db = config.database()
+    for system in config.systems():
+        for inv in system.inverters():
+            uploader.upload_missing(inv)
+
 def yieldat(config, args):
     db = config.database()
 
@@ -149,6 +156,10 @@ def argparser():
     parse_record_now = subparsers.add_parser("record_now", help="Read current inverter totals and "
                                              "write them to the database. (ignoring inverter time)")
     parse_record_now.set_defaults(func=record_now)
+
+    parse_upload_energy = subparsers.add_parser("upload_energy", help="Upload entries to energy.nur-jan.de "
+                                                "that have not yet been uploaded")
+    parse_upload_energy.set_defaults(func=upload_energy)
 
     parse_yieldat = subparsers.add_parser("yieldat", help="Get production at"
                                           " a given date")

@@ -32,6 +32,7 @@ import inverter.smabluetooth
 import pvoutputorg
 import datetimeutil
 import db
+import energy
 
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
 
@@ -133,6 +134,11 @@ class SMAData2Config(object):
             self.pvoutput_server = pvojson.get("server", "pvoutput.org")
             self.pvoutput_apikey = pvojson.get("apikey", None)
 
+        if "energy.nur-jan.de" in alljson:
+            energyjson = alljson["energy.nur-jan.de"]
+            self.energy_server = energyjson.get("server", None)
+            self.energy_apikey = energyjson.get("apikey", None)
+
         self.syslist = []
         if "systems" in alljson:
             for i, sysjson in enumerate(alljson["systems"]):
@@ -155,6 +161,8 @@ class SMAData2Config(object):
         else:
             return db.MySQLDatabase(self.dbhost, self.dbuser, self.dbpass, self.dbname)
 
+    def energy_uploader(self):
+        return energy.Uploader(self.database, self.energy_server, self.energy_apikey)
 
 if __name__ == '__main__':
     if sys.argv[1:]:

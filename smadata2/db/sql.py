@@ -117,7 +117,7 @@ class SQLDatabase(BaseDatabase):
         return r
 
     def get_productions_younger_than(self, inverters, timestamp):
-        serials = ','.join(x.serial for x in inverters)
+        serials = map(lambda x: x.serial, inverters)
         c = self.conn.cursor()
         c.execute(self.ph("SELECT timestamp,total_yield,count(inverter_serial) "
                           "FROM generation "
@@ -138,6 +138,16 @@ class SQLDatabase(BaseDatabase):
             return None
         return r[0]
 
+    def energy_get_last_datetime_uploaded(self, sid):
+        c = self.conn.cursor()
+        c.execute(self.ph("SELECT last_datetime_uploaded "
+                          "FROM energyupload "
+                          "WHERE sid = %(ph)s"), (sid,))
+        r = c.fetchone()
+        if r is None:
+            return 0
+        return r[0]
+
     def pvoutput_maybe_init_system(self, sid):
         print(sid)
         c = self.conn.cursor()
@@ -156,4 +166,11 @@ class SQLDatabase(BaseDatabase):
         c.execute(self.ph("update pvoutput "
                           "SET last_datetime_uploaded = %(ph)s"
                           "WHERE sid = %(ph)s"), (value, sid))
+        self.commit()
+
+    def energy_set_last_datetime_uploaded(self, sid, value):
+        c = self.conn.cursor()
+        self.pvoutput_maybe_init_system(sid)
+        c.execute(self.ph("REPLACE INTO energyupload(sid, last_datetime_uploaded) "
+                          "VALUES(%(ph)s, %(ph)s)"), (sid, value))
         self.commit()
