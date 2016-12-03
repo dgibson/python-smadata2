@@ -28,8 +28,8 @@ class Uploader(object):
         self.api_key = api_key
 
     def upload_missing(self, inverter):
-        last_entry_time = db.energy_get_last_datetime_uploaded(inverter.serial)
-        entries = db.get_productions_younger_than([inverter], last_entry_time)
+        last_entry_time = self.db.energy_get_last_datetime_uploaded(inverter.serial)
+        entries = self.db.get_productions_younger_than([inverter], last_entry_time)
         if len(entries) == 0:
             return
 
@@ -40,4 +40,4 @@ class Uploader(object):
             conn.request("POST", path, body, headers)
             if conn.getresponse() == 200:
                 last_entry_time = entries[-1][0]
-                energy_set_last_datetime_uploaded(inverter.serial, last_entry_time)
+                self.db.energy_set_last_datetime_uploaded(inverter.serial, last_entry_time)
