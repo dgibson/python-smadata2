@@ -32,6 +32,7 @@ import inverter.smabluetooth
 import pvoutputorg
 import datetimeutil
 import db
+import energy
 
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
 
@@ -113,17 +114,30 @@ class SMAData2Config(object):
 
         alljson = json.load(f)
 
-        dbname = os.path.expanduser("~/.smadata2.sqlite")
+        self.dbname = os.path.expanduser("~/.smadata2.sqlite")
+        self.dbtype = "sqlite"
         if "database" in alljson:
             dbjson = alljson["database"]
-            if "filename" in dbjson:
-                dbname = dbjson["filename"]
-        self.dbname = os.path.expanduser(dbname)
+            if "type" in dbjson:
+                self.dbtype = dbjson["type"]
+            if self.dbtype == 'sqlite':
+                if "filename" in dbjson:
+                    self.dbname = os.path.expanduser(dbjson["filename"])
+            else:
+                self.dbhost = dbjson["host"]
+                self.dbuser = dbjson["user"]
+                self.dbpass = dbjson["password"]
+                self.dbname = dbjson["database"]
 
         if "pvoutput.org" in alljson:
             pvojson = alljson["pvoutput.org"]
             self.pvoutput_server = pvojson.get("server", "pvoutput.org")
             self.pvoutput_apikey = pvojson.get("apikey", None)
+
+        if "energy.nur-jan.de" in alljson:
+            energyjson = alljson["energy.nur-jan.de"]
+            self.energy_server = energyjson.get("server", None)
+            self.energy_apikey = energyjson.get("apikey", None)
 
         self.syslist = []
         if "systems" in alljson:
@@ -142,8 +156,13 @@ class SMAData2Config(object):
                                self.pvoutput_apikey, system.pvoutput_sid)
 
     def database(self):
-        return db.SQLiteDatabase(self.dbname)
+        if self.dbtype == "sqlite":
+            return db.SQLiteDatabase(self.dbname)
+        else:
+            return db.MySQLDatabase(self.dbhost, self.dbuser, self.dbpass, self.dbname)
 
+    def energy_uploader(self):
+        return energy.Uploader(self.database(), self.energy_server, self.energy_apikey)
 
 if __name__ == '__main__':
     if sys.argv[1:]:
