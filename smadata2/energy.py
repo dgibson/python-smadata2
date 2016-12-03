@@ -36,7 +36,7 @@ class Uploader(object):
         path = "/api/inverters/" + inverter.serial + "/readings"
         body = json.dumps({"readings": map(lambda e: { "time": datetime.fromtimestamp(e[0]).isoformat() + "Z", "value": e[1] }, entries)})
         headers = { "Content-type": "application/json", "X-Api-Key": self.api_key }
-        with httplib.HTTPConnection(self.base_uri) as conn:
+        with httplib.HTTPSConnection(self.base_uri) as conn:
             conn.request("POST", path, body, headers)
             if conn.getresponse() == 200:
                 last_entry_time = entries[-1][0]
