@@ -156,6 +156,14 @@ class SQLiteDatabase(BaseDatabase):
             return None
         return r
 
+    def all_history(self, inv):
+        c = self.conn.cursor()
+        c.execute("SELECT timestamp, total_yield "
+                  "FROM generation "
+                  "WHERE inverter_serial = ? "
+                  "ORDER BY timestamp", (inv.serial,))
+        return c.fetchall()
+
     def get_productions_younger_than(self, inverters, timestamp):
         serials = ','.join(x.serial for x in inverters)
         c = self.conn.cursor()
