@@ -394,6 +394,20 @@ class Connection(base.InverterConnection):
                             0xa0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
                             0x200, 0x5400, 0x00260100, 0x002601ff)
 
+    def tx_set_time(self, ts, tzoffset):
+        payload = bytearray()
+        payload.extend(int2bytes32(0x00236d00))
+        payload.extend(int2bytes32(ts))
+        payload.extend(int2bytes32(ts))
+        payload.extend(int2bytes32(ts))
+        payload.extend(int2bytes16(tzoffset))
+        payload.extend(int2bytes16(0))
+        payload.extend(int2bytes32(0x007efe30))
+        payload.extend(int2bytes32(0x00000001))
+        return self.tx_6560(self.local_addr2, self.BROADCAST2,
+                            0xa0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
+                            0x20a, 0xf000, 0x00236d00, 0x00236d00, payload)
+
     def tx_historic(self, fromtime, totime):
         return self.tx_6560(self.local_addr2, self.BROADCAST2,
                             0xe0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
@@ -531,6 +545,9 @@ class Connection(base.InverterConnection):
                 if val != 0xffffffff:
                     points.append((timestamp, val))
         return points
+
+    def set_time(self, newtime, tzoffset):
+        tag = self.tx_set_time(newtime, tzoffset)
 
 
 def ptime(str):
