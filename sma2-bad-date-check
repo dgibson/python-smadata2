@@ -1,0 +1,60 @@
+#! /usr/bin/env python
+
+from __future__ import print_function
+
+import sys
+import datetime
+import dateutil
+
+import smadata2.config
+from smadata2 import datetimeutil
+
+def ts(year, month, day):
+    dt = datetime.datetime(year, month, day,
+                           tzinfo=dateutil.tz.tzutc())
+    return datetimeutil.totimestamp(dt)
+
+START_TS = datetimeutil.parse_time("2000-1-1")
+END_TS   = datetimeutil.parse_time("2020-1-1")
+
+def format_entry(e):
+    ts, y = e
+    return "(%s, %d Wh)" % (datetimeutil.format_time(ts), y)
+
+def search_yield(yval, table):
+    for i, e in enumerate(table):
+        ts, y = e
+        if y == yval:
+            return i
+
+def check_inv(system, inv, db):
+    print("%s: %s" % (system.name, inv.name))
+    dbhistory = db.all_history(inv)
+    print("%d history entries in database" % len(dbhistory))
+    print("%s - %s" % (format_entry(dbhistory[0]), format_entry(dbhistory[-1])))
+    sma = inv.connect_and_logon()
+    ihistory = sma.historic(START_TS, END_TS)
+    print("%d history entries in inverter" % len(ihistory))
+    print("%s - %s" % (format_entry(ihistory[0]), format_entry(ihistory[-1])))
+    ts0, y0 = ihistory[0]
+    i0 = search_yield(y0, dbhistory)
+    tsx = dbhistory[i0][0]
+    l = len(dbhistory) - i0
+    for i, (ts, y) in enumerate(ihistory):
+        if i >= l:
+            break
+        tsdb, ydb = dbhistory[i + i0]
+        if (ydb == y) and (tsdb == (ts - ts0 + tsx)):
+            continue
+        print("Mismatch %d: %s vs. %d: %s"
+              % (i, format_entry((ts,y)), i + i0, format_entry((tsdb, ydb))))
+
+def main(argv=sys.argv):
+    config = smadata2.config.SMAData2Config()
+    db = config.database()
+    for system in config.systems():
+        for inv in system.inverters():
+            check_inv(system, inv, db)
+
+if __name__ == '__main__':
+    main()

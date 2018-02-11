@@ -1,0 +1,98 @@
+#! /usr/bin/env python
+
+from __future__ import print_function
+
+import sys
+import time
+import datetime
+import dateutil
+import os.path
+
+import smadata2.config
+from smadata2 import datetimeutil
+
+def ts(year, month, day):
+    dt = datetime.datetime(year, month, day,
+                           tzinfo=dateutil.tz.tzutc())
+    return datetimeutil.totimestamp(dt)
+
+START_TS = datetimeutil.parse_time("2000-1-1")
+END_TS   = datetimeutil.parse_time("2020-1-1")
+
+def format_entry(e):
+    ts, y = e
+    return "(%s, %d Wh)" % (datetimeutil.format_time(ts), y)
+
+def search_yield(yval, table):
+    for i, e in enumerate(table):
+        ts, y = e
+        if y == yval:
+            return i
+
+def get_tzoffset():
+    offset = time.timezone
+    offset = -offset + 1
+    if offset < 0:
+        offset += 65536
+    return offset
+
+
+def do_inv(system, inv, db):
+    print("%s: %s" % (system.name, inv.name))
+    nowstr = time.strftime("%Y%m%d.%H%M%S")
+    logname = "~/date-correction-%s-%s.log" % (inv.serial, nowstr)
+    logname = os.path.expanduser(logname)
+    print("Logging to %s" % logname)
+    logf = open(logname, "w")
+    sma = inv.connect_and_logon()
+    ihistory = sma.historic(START_TS, END_TS)
+    idaily = sma.historic_daily(START_TS, END_TS)
+    logf.write("history_before = %r\n" % ihistory)
+    logf.write("daily_before = %r\n" % idaily)
+    print("BEFORE: history covers %s -> %s",
+          datetimeutil.format_time(ihistory[0][0]),
+          datetimeutil.format_time(ihistory[-1][0]))
+    ts, y = sma.total_yield()
+
+    newts = int(time.time())
+    newtz = get_tzoffset()
+    print("newts=%d (%s) newtz=%d (%s)",
+          newts, type(newts), newtz, type(newtz))
+    data = sma.set_time(newts, newtz)
+
+    ts2, u = sma.total_yield()
+
+    msg = ("Tried to set time to %d (%s), timezone %d, returned %r"
+           % (newts, datetimeutil.format_time(newts), newtz, data))
+    logf.write(msg + "\n")
+    print(msg)
+
+    msg = ("Time adjustment %d (%s) -> %d (%s)"
+           % (ts, datetimeutil.format_time(ts),
+              ts2, datetimeutil.format_time(ts2)))
+    logf.write(msg + "\n")
+    print(msg)               
+
+    ihistory2 = sma.historic(START_TS, END_TS)
+    idaily2 = sma.historic_daily(START_TS, END_TS)
+    logf.write("history_after = %r\n" % ihistory2)
+    logf.write("daily_after = %r\n" % idaily2)
+    print("AFTER: history covers %s -> %s",
+          datetimeutil.format_time(ihistory2[0][0]),
+          datetimeutil.format_time(ihistory2[-1][0]))
+
+    if (ihistory == ihistory2):
+        print("No change in history")
+    if (idaily == idaily2):
+        print("No change in daily")
+
+def main(argv=sys.argv):
+    config = smadata2.config.SMAData2Config()
+    db = config.database()
+    for system in config.systems():
+        for inv in system.inverters():
+	    if system.name == "Sunny Scone" and inv.name == "Inverter 2":
+	       do_inv(system, inv, db)
+
+if __name__ == '__main__':
+    main()
