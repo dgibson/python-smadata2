@@ -100,6 +100,20 @@ def download(config, args):
                 print("ERROR downloading inverter: %s" % e, file=sys.stderr)
 
 
+def settime(config, args):
+    for system in config.systems():
+        for inv in system.inverters():
+            print("%s (SN: %s)" % (inv.name, inv.serial))
+            try:
+                sma = inv.connect_and_logon()
+
+                oldtime, tmp = sma.total_yield()
+                print("\t\tPrevious time: %s"
+                      % (smadata2.datetimeutil.format_time(oldtime)))
+            except Exception as e:
+                print("ERROR contacting inverter: %s" % e, file=sys.stderr)
+
+
 def upload(config, args):
     db = config.database()
 
@@ -152,6 +166,10 @@ def argparser():
     parse_setupdb = subparsers.add_parser("setupdb", help="Create database or"
                                           + " update schema")
     parse_setupdb.set_defaults(func=setupdb)
+
+    parse_settime = subparsers.add_parser("settime", help="Update inverters'"
+                                          + " clocks")
+    parse_settime.set_defaults(func=settime)
 
     parse_upload_date = subparsers.add_parser("upload", help="Upload"
                                               " power history to pvoutput.org")
