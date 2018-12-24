@@ -21,6 +21,7 @@ from __future__ import print_function
 
 from base import BaseDatabase
 
+
 class MockDatabase(BaseDatabase):
     def __init__(self):
         super(MockDatabase, self).__init__()

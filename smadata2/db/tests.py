@@ -14,6 +14,7 @@ import smadata2.db
 import smadata2.db.mock
 from smadata2 import check
 
+
 def removef(filename):
     try:
         os.remove(filename)
@@ -229,7 +230,6 @@ CREATE TABLE schema (magic INTEGER, version INTEGER);""")
                      (DB_MAGIC, DB_VERSION))
         conn.commit()
 
-
         conn.execute("""INSERT INTO generation (inverter_serial, timestamp,
                                                  total_yield)
                             VALUES (?, ?, ?)""", self.PRESERVE_RECORD)
@@ -255,7 +255,6 @@ CREATE TABLE pvoutput (sid STRING,
         conn.execute("INSERT INTO schema (magic, version) VALUES (?, ?)",
                      (DB_MAGIC, DB_VERSION))
         conn.commit()
-
 
         conn.execute("""INSERT INTO generation (inverter_serial, timestamp,
                                                  total_yield)

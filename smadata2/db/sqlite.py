@@ -31,6 +31,7 @@ all = ['SQLiteDatabase']
 
 _whitespace = re.compile('\s+')
 
+
 def squash_schema(sqls):
     l = []
     for sql in sqls:
@@ -47,12 +48,13 @@ def sqlite_schema(conn):
 
 class SQLiteDatabase(BaseDatabase):
     DDL = [
-"""CREATE TABLE generation (inverter_serial INTEGER,
-                            timestamp INTEGER,
-                            total_yield INTEGER,
-                            PRIMARY KEY (inverter_serial, timestamp))""",
-"""CREATE TABLE pvoutput (sid STRING,
-                          last_datetime_uploaded INTEGER)""",
+        """CREATE TABLE generation (inverter_serial INTEGER,
+                                    timestamp INTEGER,
+                                    total_yield INTEGER,
+                                    PRIMARY KEY (inverter_serial,
+                                                 timestamp))""",
+        """CREATE TABLE pvoutput (sid STRING,
+                                  last_datetime_uploaded INTEGER)""",
     ]
 
     def __init__(self, filename):
@@ -69,9 +71,9 @@ class SQLiteDatabase(BaseDatabase):
 
     def add_historic(self, serial, timestamp, total_yield):
         c = self.conn.cursor()
-        c.execute("INSERT INTO generation"
-                  + " (inverter_serial, timestamp, total_yield)"
-                  + " VALUES (?, ?, ?);",
+        c.execute("INSERT INTO generation" +
+                  " (inverter_serial, timestamp, total_yield)" +
+                  " VALUES (?, ?, ?);",
                   (serial, timestamp, total_yield))
 
     def get_one_historic(self, serial, timestamp):
@@ -104,11 +106,12 @@ class SQLiteDatabase(BaseDatabase):
 
     def get_aggregate_historic(self, from_ts, to_ts, ids):
         c = self.conn.cursor()
-        c.execute("SELECT timestamp, sum(total_yield) FROM generation"
-                  " WHERE inverter_serial IN (" + ",".join("?" * len(ids)) + ")"
-                  + " AND timestamp >= ? AND timestamp < ?"
-                  + " GROUP BY timestamp ORDER BY timestamp ASC",
-                  tuple(ids) + (from_ts, to_ts))
+        template = ("SELECT timestamp, sum(total_yield) FROM generation" +
+                    " WHERE inverter_serial IN (" +
+                    ",".join("?" * len(ids)) +
+                    ") AND timestamp >= ? AND timestamp < ?" +
+                    " GROUP BY timestamp ORDER BY timestamp ASC")
+        c.execute(template, tuple(ids) + (from_ts, to_ts))
         return c.fetchall()
 
     # return midnights for each day in the database
@@ -117,11 +120,12 @@ class SQLiteDatabase(BaseDatabase):
     def midnights(self, inverters):
         c = self.conn.cursor()
         serials = ','.join(x.serial for x in inverters)
-        c.execute("SELECT distinct(timestamp) "
-                  "FROM generation "
-                  "WHERE inverter_serial  in ( ? ) "
-                  "AND timestamp % 86400 = 0 "
-                  "ORDER BY timestamp ASC", (serials,))
+        template = """SELECT distinct(timestamp)
+        FROM generation
+        WHERE inverter_serial  in ( ? )
+        AND timestamp % 86400 = 0
+        ORDER BY timestamp ASC"""
+        c.execute(template, (serials,))
         r = c.fetchall()
         r = map(lambda x: datetime.datetime.utcfromtimestamp(x[0]), r)
         return r
@@ -221,11 +225,11 @@ def create_from_empty(conn):
 
 
 SCHEMA_NOPVO = squash_schema((
-"""CREATE TABLE generation (inverter_serial INTEGER,
-                            timestamp INTEGER,
-                            total_yield INTEGER,
-                            PRIMARY KEY (inverter_serial, timestamp))""",
-"""CREATE TABLE schema (magic INTEGER, version INTEGER)"""))
+    """CREATE TABLE generation (inverter_serial INTEGER,
+                                timestamp INTEGER,
+                                total_yield INTEGER,
+                                PRIMARY KEY (inverter_serial, timestamp))""",
+    """CREATE TABLE schema (magic INTEGER, version INTEGER)"""))
 
 
 def update_nopvo(conn):
@@ -236,13 +240,13 @@ def update_nopvo(conn):
 
 
 SCHEMA_V0 = squash_schema((
-"""CREATE TABLE generation (inverter_serial INTEGER,
-                            timestamp INTEGER,
-                            total_yield INTEGER,
-                            PRIMARY KEY (inverter_serial, timestamp))""",
-"""CREATE TABLE schema (magic INTEGER, version INTEGER)""",
-"""CREATE TABLE pvoutput (sid STRING,
-                          last_datetime_uploaded INTEGER)"""))
+    """CREATE TABLE generation (inverter_serial INTEGER,
+                                timestamp INTEGER,
+                                total_yield INTEGER,
+                                PRIMARY KEY (inverter_serial, timestamp))""",
+    """CREATE TABLE schema (magic INTEGER, version INTEGER)""",
+    """CREATE TABLE pvoutput (sid STRING,
+                              last_datetime_uploaded INTEGER)"""))
 
 
 def update_v0(conn):
@@ -257,6 +261,7 @@ _schema_table = {
     SCHEMA_V0: update_v0,
     SCHEMA_NOPVO: update_nopvo,
 }
+
 
 def try_open(filename):
     try:

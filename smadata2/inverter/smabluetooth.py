@@ -202,9 +202,9 @@ class Connection(base.InverterConnection):
         self.rx_outer(from_, to_, type_, payload)
 
     def rxfilter_outer(self, to_):
-        return ((to_ == self.local_addr)
-                or (to_ == self.BROADCAST)
-                or (to_ == "00:00:00:00:00:00"))
+        return ((to_ == self.local_addr) or
+                (to_ == self.BROADCAST) or
+                (to_ == "00:00:00:00:00:00"))
 
     @waiter
     def rx_outer(self, from_, to_, type_, payload):
@@ -284,8 +284,8 @@ class Connection(base.InverterConnection):
                          response, error, pktcount, first)
 
     def rxfilter_6560(self, to2):
-        return ((to2 == self.local_addr2)
-                or (to2 == self.BROADCAST2))
+        return ((to2 == self.local_addr2) or
+                (to2 == self.BROADCAST2))
 
     @waiter
     def rx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag,
@@ -338,8 +338,8 @@ class Connection(base.InverterConnection):
                 type_, subtype, arg1, arg2, extra=bytearray(),
                 response=False, error=0, pktcount=0, first=True):
         if len(extra) % 4 != 0:
-            raise Error("Inner protocol payloads must"
-                        + "have multiple of 4 bytes length")
+            raise Error("Inner protocol payloads must" +
+                        " have multiple of 4 bytes length")
         innerlen = (len(extra) + INNER_HLEN) // 4
         payload = bytearray()
         payload.append(innerlen)
@@ -429,8 +429,7 @@ class Connection(base.InverterConnection):
 
     def wait_outer(self, wtype, wpl=bytearray()):
         def wfn(from_, to_, type_, payload):
-            if ((type_ == wtype)
-                    and payload.startswith(wpl)):
+            if ((type_ == wtype) and payload.startswith(wpl)):
                 return payload
         return self.wait('outer', wfn)
 
@@ -479,8 +478,8 @@ class Connection(base.InverterConnection):
 
     def hello(self):
         hellopkt = self.wait_outer(OTYPE_HELLO)
-        if hellopkt != bytearray('\x00\x04\x70\x00\x01\x00\x00\x00'
-                                 + '\x00\x01\x00\x00\x00'):
+        if hellopkt != bytearray('\x00\x04\x70\x00\x01\x00\x00\x00' +
+                                 '\x00\x01\x00\x00\x00'):
             raise Error("Unexpected HELLO %r" % hellopkt)
         self.tx_outer("00:00:00:00:00:00", self.remote_addr,
                       OTYPE_HELLO, hellopkt)
