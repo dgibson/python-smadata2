@@ -56,9 +56,9 @@ class SMAData2InverterConfig(object):
         return conn
 
     def __str__(self):
-        return ("\t%s:\n" % self.name
-                + "\t\tSerial number: '%s'\n" % self.serial
-                + "\t\tBluetooth address: %s\n" % self.bdaddr)
+        return ("\t%s:\n" % self.name +
+                "\t\tSerial number: '%s'\n" % self.serial +
+                "\t\tBluetooth address: %s\n" % self.bdaddr)
 
 
 class SMAData2SystemConfig(object):
@@ -97,8 +97,8 @@ class SMAData2SystemConfig(object):
 
     def __str__(self):
         return ("%s: (pvoutput.org SID '%s')\n" % (self.name,
-                                                   self.pvoutput_sid)
-                + "".join(str(inv) for inv in self.invs))
+                                                   self.pvoutput_sid) +
+                "".join(str(inv) for inv in self.invs))
 
 
 class SMAData2Config(object):

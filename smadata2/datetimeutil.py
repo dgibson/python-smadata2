@@ -38,7 +38,7 @@ def totimestamp(dt):
 def day_timestamps(d, tz):
     if not isinstance(d, datetime.date):
         raise TypeError
-    d1  = d + datetime.timedelta(days=1)
+    d1 = d + datetime.timedelta(days=1)
     midnight = datetime.time(0, 0, 0, 0, tz)
     dt0 = datetime.datetime.combine(d, midnight)
     dt1 = datetime.datetime.combine(d1, midnight)

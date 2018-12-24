@@ -136,7 +136,8 @@ class PVOutputUploader(object):
     # @note no way to tell if all inverters have reported in....
     def upload_statuses_for_day(self, day):
         date = day.date()
-        ts_start, ts_end = datetimeutil.day_timestamps(date, self.system.timezone())
+        ts_start, ts_end = datetimeutil.day_timestamps(date,
+                                                       self.system.timezone())
         ids = [i.serial for i in self.system.inverters()]
 
         entries = db.get_aggregate_historic(ts_start, ts_end, ids)
@@ -204,8 +205,8 @@ class PVOutputUploader(object):
                 theirdata.pop(0)
             else:
                 if their_delta != my_delta:
-                    print(("production mismatch (timestamp=%d)"
-                           + " (them=%d us=%d)")
+                    print(("production mismatch (timestamp=%d)" +
+                           " (them=%d us=%d)")
                           % (my_datetime, their_delta, my_delta))
                 else:
                     self.debug("ALL GOOD (them=%d us=%d) (them=%d us=%d)"
@@ -227,8 +228,8 @@ class PVOutputUploader(object):
                 my_delta = mine[1] - first_production
                 if my_delta != my_last_delta:  # zeroes at end of day
                     if not printed_mydata_warning_once:
-                        print(("There are %d extra readings in my database"
-                               + "which are not on pvoutput.org")
+                        print(("There are %d extra readings in my database" +
+                               "which are not on pvoutput.org")
                               % len(mydata))
                         printed_mydata_warning_once = True
                     self.debug("my extra: timestamp=%s cumulative=%s"

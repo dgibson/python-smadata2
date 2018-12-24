@@ -156,7 +156,7 @@ class TestConfigUTCSystem(TestConfigEmptySystem):
             {
                 "name": "Test System",
                 "pvoutput-sid": "12345",
-		"timezone": "UTC"
+                "timezone": "UTC"
             }
          ]
     }"""

@@ -177,7 +177,7 @@ class API(object):
         results = results.split(";")
         if len(results) != len(batch):
             raise Error("Unexpected number of results from addbatchstatus")
-        
+
         for r in results:
             d, t, status = r.split(",")
             if status != "1":
@@ -279,8 +279,8 @@ class API(object):
         y = int(vals[2])
 
         return dt, y
-    
-    ### Here be dragons...
+
+    # Here be dragons...
     def addoutput(self, somedate, somedelta):
         """ add a daily output to pvoutput
         @param date to add output for

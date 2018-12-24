@@ -236,8 +236,8 @@ class SMAData2CLI(Connection):
 
     def cmd_hello(self):
         self.tx_outer("00:00:00:00:00:00", self.remote_addr, OTYPE_HELLO,
-                      bytearray('\x00\x04\x70\x00\x01\x00\x00\x00'
-                                + '\x00\x01\x00\x00\x00'))
+                      bytearray('\x00\x04\x70\x00\x01\x00\x00\x00' +
+                                '\x00\x01\x00\x00\x00'))
 
     def cmd_getvar(self, varid):
         varid = int(varid, 16)

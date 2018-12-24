@@ -83,7 +83,8 @@ class RealAPIChecker(object):
         if not os.path.exists(self.CONFIGFILE):
             raise AssertionError("This test needs a special configuration")
 
-        self.config = smadata2.config.SMAData2Config("smadata2-test-pvoutput.json")
+        self.config = \
+            smadata2.config.SMAData2Config("smadata2-test-pvoutput.json")
         self.system = self.config.systems()[0]
         assert_equals(self.system.name, "test")
 
@@ -102,7 +103,7 @@ class RealAPIChecker(object):
     def tearDown(self):
         self.api.deletestatus(self.date)
         self.delay()
-        
+
 
 @attr("pvoutput.org")
 class TestRealAPI(RealAPIChecker):

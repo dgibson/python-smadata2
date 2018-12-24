@@ -15,6 +15,7 @@ import smadata2.check
 import smadata2.db.sqlite
 from smadata2.db.tests import SQLiteDBChecker
 
+
 def test_prepare1():
     dawn = 8*3600
     dusk = 20*3600
@@ -59,7 +60,8 @@ class TestLoad(SQLiteDBChecker):
         dusk = daystart + 20*3600
         dayend = daystart + 24*3600
 
-        data = smadata2.check.generate_linear(daystart, dawn, dusk, dayend, 12345, 1)
+        data = smadata2.check.generate_linear(daystart, dawn, dusk, dayend,
+                                              12345, 1)
 
         for ts, y in data:
             self.db.add_historic("TESTSERIAL", ts, y)

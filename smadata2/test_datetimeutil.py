@@ -30,17 +30,20 @@ def test_daytimestamps_utc():
     tst = smadata2.datetimeutil.day_timestamps(d, dateutil.tz.tzutc())
     assert_equals(tst, (0, 86400))
 
+
 def test_daytimestamps_local():
     d = datetime.date(2014, 6, 6)
     tz = dateutil.tz.gettz("Australia/Sydney")
     tst = smadata2.datetimeutil.day_timestamps(d, tz)
     assert_equals(tst, (1401976800, 1401976800 + 24*60*60))
 
+
 def test_daytimestamps_dstend():
     d = datetime.date(2014, 4, 6)
     tz = dateutil.tz.gettz("Australia/Sydney")
     tst = smadata2.datetimeutil.day_timestamps(d, tz)
     assert_equals(tst, (1396702800, 1396702800 + 25*60*60))
+
 
 def test_daytimestamps_dstend():
     d = datetime.date(2014, 10, 5)

@@ -51,7 +51,7 @@ def status(config, args):
                 print("\t\tTotal generation at %s:\t%d Wh"
                       % (smadata2.datetimeutil.format_time(ttime), total))
             except Exception as e:
-                print("ERROR contacting inverter: %s"  % e, file=sys.stderr)
+                print("ERROR contacting inverter: %s" % e, file=sys.stderr)
 
 
 def yieldat(config, args):
@@ -143,8 +143,8 @@ def setupdb(config, args):
 
 
 def argparser():
-    parser = argparse.ArgumentParser(description="Work with Bluetooth enabled"
-                                     + " SMA photovoltaic inverters")
+    parser = argparse.ArgumentParser(description="Work with Bluetooth"
+                                     " enabled SMA photovoltaic inverters")
 
     parser.add_argument("--config")
 
@@ -153,26 +153,25 @@ def argparser():
     parse_status = subparsers.add_parser("status", help="Read inverter status")
     parse_status.set_defaults(func=status)
 
-    parse_yieldat = subparsers.add_parser("yieldat", help="Get production at"
-                                          " a given date")
+    help = "Get production at a given date"
+    parse_yieldat = subparsers.add_parser("yieldat", help=help)
     parse_yieldat.set_defaults(func=yieldat)
     parse_yieldat.add_argument(type=str, dest="datetime")
 
-    parse_download = subparsers.add_parser("download",
-                                           help="Download power history"
-                                           + " and record in database")
+    help = "Download power history and record in database"
+    parse_download = subparsers.add_parser("download", help=help)
     parse_download.set_defaults(func=download)
 
-    parse_setupdb = subparsers.add_parser("setupdb", help="Create database or"
-                                          + " update schema")
+    help = "Create database or update schema"
+    parse_setupdb = subparsers.add_parser("setupdb", help=help)
     parse_setupdb.set_defaults(func=setupdb)
 
-    parse_settime = subparsers.add_parser("settime", help="Update inverters'"
-                                          + " clocks")
+    help = "Update inverters' clocks"
+    parse_settime = subparsers.add_parser("settime", help=help)
     parse_settime.set_defaults(func=settime)
 
-    parse_upload_date = subparsers.add_parser("upload", help="Upload"
-                                              " power history to pvoutput.org")
+    help = "Upload power history to pvoutput.org"
+    parse_upload_date = subparsers.add_parser("upload", help=help)
     parse_upload_date.set_defaults(func=upload)
     parse_upload_date.add_argument("--date", type=str, dest="upload_date")
 
