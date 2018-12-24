@@ -2,13 +2,12 @@
 
 from __future__ import print_function
 
-import StringIO
 import os
 import os.path
 import errno
 import sqlite3
 
-from nose.tools import *
+from nose.tools import assert_equals, raises
 
 import smadata2.db
 import smadata2.db.mock
@@ -199,7 +198,7 @@ for cset in (SimpleChecks, AggregateChecks):
 #
 # Tests for sqlite schema updating
 #
-class UpdateSQLiteChecker(Test_SimpleChecks_SQLiteDBChecker):
+class UpdateSQLiteChecker(SQLiteDBChecker):
     PRESERVE_RECORD = ("PRESERVE", 0, 31415)
 
     def test_backup(self):
@@ -291,4 +290,4 @@ class TestBadSQLite(BadSchemaSQLiteChecker):
 
     @raises(smadata2.db.WrongSchema)
     def test_update(self):
-        db = smadata2.db.sqlite.create_or_update(self.dbname)
+        smadata2.db.sqlite.create_or_update(self.dbname)

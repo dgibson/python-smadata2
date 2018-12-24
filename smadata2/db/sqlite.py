@@ -19,24 +19,25 @@
 
 from __future__ import print_function
 
-import os
 import shutil
 import re
 import sqlite3
+import time
+import datetime
 
-from base import *
+from base import BaseDatabase, WrongSchema
 
 
 all = ['SQLiteDatabase']
 
-_whitespace = re.compile('\s+')
+_whitespace = re.compile('\\s+')
 
 
 def squash_schema(sqls):
-    l = []
+    tmp = []
     for sql in sqls:
-        l.append(_whitespace.sub(' ', sql.strip()))
-    return frozenset(l)
+        tmp.append(_whitespace.sub(' ', sql.strip()))
+    return frozenset(tmp)
 
 
 def sqlite_schema(conn):

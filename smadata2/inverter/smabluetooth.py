@@ -25,9 +25,9 @@ import getopt
 import time
 
 import bluetooth
-import readline
 
 import base
+from base import Error
 from smadata2.datetimeutil import format_time
 
 __all__ = ['Connection',
@@ -420,7 +420,6 @@ class Connection(base.InverterConnection):
 
     def wait(self, class_, cond=None):
         self.waitvar = None
-        fn = getattr(self, 'rx_' + class_)
         setattr(self, '__waitcond_rx_' + class_, cond)
         while self.waitvar is None:
             self.rx()
@@ -546,7 +545,7 @@ class Connection(base.InverterConnection):
         return points
 
     def set_time(self, newtime, tzoffset):
-        tag = self.tx_set_time(newtime, tzoffset)
+        self.tx_set_time(newtime, tzoffset)
 
 
 def ptime(str):

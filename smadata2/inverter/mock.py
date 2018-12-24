@@ -33,10 +33,10 @@ class MockInverterZero(InverterConnection):
         return 0
 
     def historic(self, fromtime, totime):
-        l = []
+        tmp = []
         for timestamp in range(fromtime, totime, 5*60):
-            l.append((timestamp, 0))
-        return l
+            tmp.append((timestamp, 0))
+        return tmp
 
     def historic_daily(self, fromtime, totime):
-        raise NotImplemented
+        raise NotImplementedError

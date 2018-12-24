@@ -19,5 +19,5 @@
 
 from __future__ import print_function
 
-from base import *
-from sqlite import *
+from .base import WrongSchema
+from .sqlite import SQLiteDatabase
