@@ -21,8 +21,6 @@ from __future__ import print_function
 
 import sys
 import os
-import time
-import calendar
 import dateutil.parser
 import dateutil.tz
 import json

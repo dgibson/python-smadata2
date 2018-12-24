@@ -1,14 +1,10 @@
 #! /usr/bin/env python
 
-import StringIO
-import os.path
-import unittest
-import time
 import datetime
 import dateutil.tz
 import json
 
-from nose.tools import *
+from nose.tools import assert_equals
 
 import smadata2.upload
 import smadata2.check
@@ -27,7 +23,7 @@ def test_prepare1():
                                                    data, dateutil.tz.tzutc())
 
     dtdawn = datetime.datetime(1970, 1, 1, 8, tzinfo=dateutil.tz.tzutc())
-    dtdusk = datetime.datetime(1970, 1, 1, 20, tzinfo=dateutil.tz.tzutc())
+    # dtdusk = datetime.datetime(1970, 1, 1, 20, tzinfo=dateutil.tz.tzutc())
 
     assert_equals(len(output), (dusk - dawn) / 300)
     for i, (dt, y) in enumerate(output):

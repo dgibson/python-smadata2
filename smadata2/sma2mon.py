@@ -21,7 +21,6 @@ from __future__ import print_function
 
 import sys
 import argparse
-import time
 import os.path
 import datetime
 import dateutil.parser

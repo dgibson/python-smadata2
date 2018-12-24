@@ -1,9 +1,6 @@
 import time
 import datetime
 
-import upload
-import datetimeutil
-
 
 class PVOutputUploader(object):
     def __init__(self, db, system, pvoutput):
@@ -23,7 +20,6 @@ class PVOutputUploader(object):
     # @fixme move this batching into pvoutput
     def send_production(self, entries):
         batch = []
-        last_total_production = -1		# unlikely...
 
         too_old_in_days = self.pvoutput.days_ago_accepted_by_api()
 
@@ -44,8 +40,6 @@ class PVOutputUploader(object):
 
             dt = datetime.datetime.fromtimestamp(timestamp)
             batch.append([dt, total_production])
-
-            last_total_production = total_production
 
             if len(batch) == self.pvoutput.batchstatus_count_accepted_by_api():
                 if havesent:
@@ -134,16 +128,17 @@ class PVOutputUploader(object):
     # @param day day to upload for
     # @note The day *must be over* for this not to screw you over.
     # @note no way to tell if all inverters have reported in....
-    def upload_statuses_for_day(self, day):
-        date = day.date()
-        ts_start, ts_end = datetimeutil.day_timestamps(date,
-                                                       self.system.timezone())
-        ids = [i.serial for i in self.system.inverters()]
-
-        entries = db.get_aggregate_historic(ts_start, ts_end, ids)
-        entries = prepare_data_for_date(date, results, sc.timezone())
-
-        self.send_production(entries)
+    # def upload_statuses_for_day(self, day):
+    #     date = day.date()
+    #     ts_start, ts_end = datetimeutil.day_timestamps(date,
+    #                                                    self.system.timezone())
+    #     ids = [i.serial for i in self.system.inverters()]
+    #
+    #     entries = db.get_aggregate_historic(ts_start, ts_end, ids)
+    #     entries = prepare_data_for_date(date, entries,
+    #                                     self.system.timezone())
+    #
+    #     self.send_production(entries)
 
     # print out a message only if we're verbose
     def debug(self, message):
@@ -276,7 +271,7 @@ class PVOutputUploader(object):
             print(" upload data for a specific date (%s)" % date)
             day = self.pvoutput.parse_date_and_time(date, "00:00")
             self.upload_statuses_for_day(day)
-            sleep(20)  # so the reconcile works....
+            time.sleep(20)  # so the reconcile works....
 
         if True:
             print("reconciling specific date (%s)" % date)

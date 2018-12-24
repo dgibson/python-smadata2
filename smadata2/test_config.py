@@ -2,12 +2,11 @@
 
 import StringIO
 import os.path
-import unittest
 import time
 import datetime
 import dateutil.tz
 
-from nose.tools import *
+from nose.tools import assert_equals
 
 import smadata2.config
 
@@ -144,7 +143,6 @@ class TestConfigBareInverter(BaseTestConfig):
         assert_equals(inv.name, "Test Inverter")
         assert_equals(inv.bdaddr, "aa:bb:cc:dd:ee:ff")
         assert_equals(inv.serial, "TESTSERIAL")
-        xtime = time.mktime(datetime.datetime(2000, 1, 1).timetuple())
         assert inv.starttime is None
         assert isinstance(str(inv), str)
 

@@ -21,9 +21,7 @@ from __future__ import print_function
 
 import argparse
 import datetime
-from datetime import date
 import sys
-import time
 
 import smadata2.protocol
 import smadata2.config
@@ -119,7 +117,7 @@ class sidType():
                 self.system = system
                 break
         if self.system is None:
-            fatal("sid not found")
+            raise "sid not found"
 
     def __call__(self):
         print("__called__ called on datetimeType?!")

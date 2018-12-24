@@ -25,7 +25,10 @@ import signal
 import readline
 import time
 
-from smadata2.inverter.smabluetooth import *
+from smadata2.inverter.smabluetooth import Connection
+from smadata2.inverter.smabluetooth import OTYPE_HELLO, OTYPE_ERROR, \
+    OTYPE_VARVAL, OTYPE_GETVAR, OTYPE_PPP, OTYPE_PPP2, OVAR_SIGNAL
+from smadata2.inverter.smabluetooth import bytes2int, int2bytes16
 
 
 class Quit(Exception):
@@ -250,7 +253,7 @@ class SMAData2CLI(Connection):
         self.tx_ppp("ff:ff:ff:ff:ff:ff", protocol, payload)
 
     def cmd_send2(self, *args):
-        bi = [int(x, 16) for x in args]
+        bb = [int(x, 16) for x in args]
         a2 = bb[0]
         b1, b2 = bb[1], bb[2]
         c1, c2 = bb[3], bb[4]

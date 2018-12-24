@@ -5,7 +5,7 @@ import datetime
 import time
 import dateutil
 
-from nose.tools import *
+from nose.tools import assert_equals
 from nose.plugins.attrib import attr
 
 import smadata2.config
@@ -125,7 +125,7 @@ class TestRealAPI(RealAPIChecker):
         self.delay()
 
         results = self.api.getstatus(self.date)
-        assert_equal(results, [(dt0, 0), (dt1, 7)])
+        assert_equals(results, [(dt0, 0), (dt1, 7)])
 
     def test_addbatch(self):
         dt0 = datetime.datetime.combine(self.date, datetime.time(10, 0, 0))

@@ -1,13 +1,9 @@
 #! /usr/bin/env python
 
-import StringIO
-import os.path
-import unittest
-import time
 import datetime
 import dateutil.tz
 
-from nose.tools import *
+from nose.tools import assert_equals, raises
 
 import smadata2.datetimeutil
 
@@ -45,7 +41,7 @@ def test_daytimestamps_dstend():
     assert_equals(tst, (1396702800, 1396702800 + 25*60*60))
 
 
-def test_daytimestamps_dstend():
+def test_daytimestamps_dstbegin():
     d = datetime.date(2014, 10, 5)
     tz = dateutil.tz.gettz("Australia/Sydney")
     tst = smadata2.datetimeutil.day_timestamps(d, tz)

@@ -1,5 +1,6 @@
 NOSE = nosetests
 PEP8 = pep8
+FLAKE8 = flake8-2
 
 NOSEFLAGS = --with-coverage --cover-package=smadata2
 
@@ -17,6 +18,9 @@ checkall:
 
 pep8:
 	$(PEP8) $(PYFILES)
+
+flake8:
+	$(FLAKE8) $(PYFILES)
 
 clean:
 	rm -f *~ *.pyc
