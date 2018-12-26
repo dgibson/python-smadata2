@@ -261,6 +261,26 @@ CREATE TABLE pvoutput (sid STRING,
         del conn
 
 
+class TestUpdateV2_3(UpdateSQLiteChecker):
+    def prepopulate(self):
+        conn = sqlite3.connect(self.dbname)
+        conn.executescript("""
+CREATE TABLE generation (inverter_serial INTEGER,
+                            timestamp INTEGER,
+                            total_yield INTEGER,
+                            PRIMARY KEY (inverter_serial, timestamp));
+CREATE TABLE pvoutput (sid STRING,
+                       last_datetime_uploaded INTEGER);""")
+        conn.commit()
+
+        conn.execute("""INSERT INTO generation (inverter_serial, timestamp,
+                                                 total_yield)
+                            VALUES (?, ?, ?)""", self.PRESERVE_RECORD)
+        conn.commit()
+
+        del conn
+
+
 class BadSchemaSQLiteChecker(BaseSQLite):
     def setUp(self):
         self.prepare_sqlite()

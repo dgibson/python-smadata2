@@ -19,8 +19,17 @@
 
 import abc
 
+# Ad hoc samples, externally controlled
+SAMPLE_ADHOC = 0
+# Inverter recorded high(ish) frequency samples
+SAMPLE_INV_FAST = 1
+# Inverted recorded daily samples
+SAMPLE_INV_DAILY = 2
 
-all = ['Error', 'WrongSchema']
+SAMPLETYPES = [SAMPLE_ADHOC, SAMPLE_INV_FAST, SAMPLE_INV_DAILY]
+
+all = ['Error', 'WrongSchema', SAMPLE_ADHOC, SAMPLE_INV_FAST, SAMPLE_INV_DAILY,
+       SAMPLETYPES]
 
 
 class Error(Exception):

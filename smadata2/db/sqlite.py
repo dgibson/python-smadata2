@@ -24,7 +24,7 @@ import time
 import datetime
 
 from .base import BaseDatabase, WrongSchema
-
+from .base import SAMPLETYPES, SAMPLE_INV_FAST
 
 all = ['SQLiteDatabase']
 
@@ -47,11 +47,14 @@ def sqlite_schema(conn):
 
 class SQLiteDatabase(BaseDatabase):
     DDL = [
-        """CREATE TABLE generation (inverter_serial INTEGER,
-                                    timestamp INTEGER,
-                                    total_yield INTEGER,
-                                    PRIMARY KEY (inverter_serial,
-                                                 timestamp))""",
+        """CREATE TABLE "generation"
+                  (inverter_serial INTEGER NOT NULL,
+                   timestamp INTEGER NOT NULL,
+                   sample_type INTEGER CHECK (""" +
+        " OR ".join(["sample_type = %d" % x for x in SAMPLETYPES]) + """),
+                   total_yield INTEGER,
+                   PRIMARY KEY (inverter_serial,
+                                timestamp, sample_type))""",
         """CREATE TABLE pvoutput (sid STRING,
                                   last_datetime_uploaded INTEGER)""",
     ]
@@ -71,9 +74,9 @@ class SQLiteDatabase(BaseDatabase):
     def add_historic(self, serial, timestamp, total_yield):
         c = self.conn.cursor()
         c.execute("INSERT INTO generation" +
-                  " (inverter_serial, timestamp, total_yield)" +
-                  " VALUES (?, ?, ?);",
-                  (serial, timestamp, total_yield))
+                  " (inverter_serial, timestamp, sample_type, total_yield)" +
+                  " VALUES (?, ?, ?, ?);",
+                  (serial, timestamp, SAMPLE_INV_FAST, total_yield))
 
     def get_one_historic(self, serial, timestamp):
         c = self.conn.cursor()
@@ -254,11 +257,42 @@ def update_v0(conn):
     conn.commit()
 
 
+SCHEMA_V2_3 = squash_schema((
+    """CREATE TABLE generation (inverter_serial INTEGER,
+                                timestamp INTEGER,
+                                total_yield INTEGER,
+                                PRIMARY KEY (inverter_serial,
+                                             timestamp))""",
+    """CREATE TABLE pvoutput (sid STRING,
+                              last_datetime_uploaded INTEGER)"""))
+
+
+def update_v2_3(conn):
+    conn.execute("""CREATE TABLE "new_generation"
+                           (inverter_serial INTEGER NOT NULL,
+                            timestamp INTEGER NOT NULL,
+                            sample_type INTEGER CHECK (""" +
+                 " OR ".join(["sample_type = %d" % x for x in SAMPLETYPES]) +
+                 """),
+                            total_yield INTEGER,
+                            PRIMARY KEY (inverter_serial,
+                                        timestamp, sample_type))""")
+    conn.execute("""INSERT INTO new_generation (inverter_serial, timestamp,
+                                                sample_type, total_yield)
+                        SELECT inverter_serial, timestamp, ?, total_yield
+                               FROM generation""", (SAMPLE_INV_FAST,))
+    conn.execute("DROP TABLE generation")
+    conn.execute("ALTER TABLE new_generation RENAME TO generation")
+    conn.commit()
+    conn.execute("VACUUM")
+
+
 _schema_table = {
     SCHEMA_CURRENT: None,
     SCHEMA_EMPTY: create_from_empty,
     SCHEMA_V0: update_v0,
     SCHEMA_NOPVO: update_nopvo,
+    SCHEMA_V2_3: update_v2_3,
 }
 
 
@@ -293,7 +327,8 @@ def create_or_update(filename):
         new_schema = sqlite_schema(conn)
 
         assert old_schema != new_schema
-        assert new_schema in _schema_table
+        assert new_schema in _schema_table, \
+            "Unexpected final schema %s" % new_schema
 
         del conn
 
