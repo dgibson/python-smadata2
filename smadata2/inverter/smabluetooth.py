@@ -23,8 +23,7 @@ from __future__ import division
 import sys
 import getopt
 import time
-
-import bluetooth
+import socket
 
 import base
 from base import Error
@@ -156,7 +155,8 @@ class Connection(base.InverterConnection):
     BROADCAST2 = bytearray('\xff\xff\xff\xff\xff\xff')
 
     def __init__(self, addr):
-        self.sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+        self.sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM,
+                                  socket.BTPROTO_RFCOMM)
         self.sock.connect((addr, 1))
 
         self.remote_addr = addr
