@@ -1,6 +1,6 @@
-NOSE = nosetests
-PEP8 = pep8
-FLAKE8 = flake8-2
+NOSE = nosetests-3
+PEP8 = python3-pep8
+FLAKE8 = python3-flake8
 
 NOSEFLAGS = --with-coverage --cover-package=smadata2
 

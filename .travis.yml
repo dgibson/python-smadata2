@@ -3,10 +3,10 @@ language: python
 sudo: false
 
 python:
-  - "2.7"
+  - "3.6"
 
 install:
-  - "pip install -r requirements.txt"
+  - "pip3 install -r requirements.txt"
 
 script:
-  - make check
+  - make check NOSE=nosetests

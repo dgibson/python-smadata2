@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 #
 # smadata2.inverter.smabluetooth - Support for Bluetooth enabled SMA inverters
 # Copyright (C) 2014 David Gibson <david@gibson.dropbear.id.au>
@@ -17,16 +17,13 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import print_function
-from __future__ import division
-
 import sys
 import getopt
 import time
 import socket
 
-import base
-from base import Error
+from . import base
+from .base import Error
 from smadata2.datetimeutil import format_time
 
 __all__ = ['Connection',
@@ -76,14 +73,14 @@ def _check_header(hdr):
     return hdr[1]
 
 
-def ba2str(addr):
+def ba2bytes(addr):
     if len(addr) != 6:
         raise ValueError("Bad length for bluetooth address")
     assert len(addr) == 6
     return "%02X:%02X:%02X:%02X:%02X:%02X" % tuple(reversed(addr))
 
 
-def str2ba(s):
+def bytes2ba(s):
     addr = [int(x, 16) for x in s.split(':')]
     addr.reverse()
     if len(addr) != 6:
@@ -152,7 +149,7 @@ def crc16(iv, data):
 class Connection(base.InverterConnection):
     MAXBUFFER = 512
     BROADCAST = "ff:ff:ff:ff:ff:ff"
-    BROADCAST2 = bytearray('\xff\xff\xff\xff\xff\xff')
+    BROADCAST2 = bytearray(b'\xff\xff\xff\xff\xff\xff')
 
     def __init__(self, addr):
         self.sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM,
@@ -162,7 +159,7 @@ class Connection(base.InverterConnection):
         self.remote_addr = addr
         self.local_addr = self.sock.getsockname()[0]
 
-        self.local_addr2 = bytearray('\x78\x00\x3f\x10\xfb\x39')
+        self.local_addr2 = bytearray(b'\x78\x00\x3f\x10\xfb\x39')
 
         self.rxbuf = bytearray()
         self.pppbuf = dict()
@@ -194,8 +191,8 @@ class Connection(base.InverterConnection):
 
     @waiter
     def rx_raw(self, pkt):
-        from_ = ba2str(pkt[4:10])
-        to_ = ba2str(pkt[10:16])
+        from_ = ba2bytes(pkt[4:10])
+        to_ = ba2bytes(pkt[10:16])
         type_ = bytes2int(pkt[16:18])
         payload = pkt[OUTER_HLEN:]
 
@@ -220,7 +217,7 @@ class Connection(base.InverterConnection):
         pppbuf = self.pppbuf[from_]
 
         pppbuf.extend(payload)
-        term = pppbuf.find('\x7e', 1)
+        term = pppbuf.find(b'\x7e', 1)
         if term < 0:
             return
 
@@ -302,13 +299,13 @@ class Connection(base.InverterConnection):
     def tx_raw(self, pkt):
         if _check_header(pkt) != len(pkt):
             raise ValueError("Bad packet")
-        self.sock.send(str(pkt))
+        self.sock.send(bytes(pkt))
 
     def tx_outer(self, from_, to_, type_, payload):
         pktlen = len(payload) + OUTER_HLEN
         pkt = bytearray([0x7e, pktlen, 0x00, pktlen ^ 0x7e])
-        pkt += str2ba(from_)
-        pkt += str2ba(to_)
+        pkt += bytes2ba(from_)
+        pkt += bytes2ba(to_)
         pkt += int2bytes16(type_)
         pkt += payload
         assert _check_header(pkt) == pktlen
@@ -316,7 +313,7 @@ class Connection(base.InverterConnection):
         self.tx_raw(pkt)
 
     def tx_ppp(self, to_, protocol, payload):
-        frame = bytearray('\xff\x03')
+        frame = bytearray(b'\xff\x03')
         frame += int2bytes16(protocol)
         frame += payload
         frame += int2bytes16(crc16(0xffff, frame))
@@ -372,14 +369,14 @@ class Connection(base.InverterConnection):
         self.tx_ppp("ff:ff:ff:ff:ff:ff", SMA_PROTOCOL_ID, payload)
         return tag
 
-    def tx_logon(self, password='0000', timeout=900):
+    def tx_logon(self, password=b'0000', timeout=900):
         if len(password) > 12:
             raise ValueError
-        password += '\x00' * (12 - len(password))
+        password += b'\x00' * (12 - len(password))
         tag = self.gettag()
 
-        extra = bytearray('\xaa\xaa\xbb\xbb\x00\x00\x00\x00')
-        extra += bytearray(((ord(c) + 0x88) % 0xff) for c in password)
+        extra = bytearray(b'\xaa\xaa\xbb\xbb\x00\x00\x00\x00')
+        extra += bytearray(((c + 0x88) % 0xff) for c in password)
         return self.tx_6560(self.local_addr2, self.BROADCAST2, 0xa0,
                             0x00, 0x01, 0x00, 0x01, tag,
                             0x040c, 0xfffd, 7, timeout, extra)
@@ -477,8 +474,8 @@ class Connection(base.InverterConnection):
 
     def hello(self):
         hellopkt = self.wait_outer(OTYPE_HELLO)
-        if hellopkt != bytearray('\x00\x04\x70\x00\x01\x00\x00\x00' +
-                                 '\x00\x01\x00\x00\x00'):
+        if hellopkt != bytearray(b'\x00\x04\x70\x00\x01\x00\x00\x00' +
+                                 b'\x00\x01\x00\x00\x00'):
             raise Error("Unexpected HELLO %r" % hellopkt)
         self.tx_outer("00:00:00:00:00:00", self.remote_addr,
                       OTYPE_HELLO, hellopkt)
@@ -500,7 +497,7 @@ class Connection(base.InverterConnection):
                      tag, type_, subtype, arg1, arg2, payload)
         return self.wait_6560(tag)
 
-    def logon(self, password='0000', timeout=900):
+    def logon(self, password=b'0000', timeout=900):
         tag = self.tx_logon(password, timeout)
         self.wait_6560(tag)
 

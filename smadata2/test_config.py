@@ -1,6 +1,6 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 
-import StringIO
+import io
 import os.path
 import time
 import datetime
@@ -13,7 +13,7 @@ import smadata2.config
 
 class BaseTestConfig(object):
     def setUp(self):
-        self.c = smadata2.config.SMAData2Config(StringIO.StringIO(self.json))
+        self.c = smadata2.config.SMAData2Config(io.StringIO(self.json))
 
 
 class TestMinimalConfig(BaseTestConfig):

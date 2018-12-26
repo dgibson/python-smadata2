@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 #
 # smadata2.download - Routines to download from an inverter to database
 # Copyright (C) 2014 David Gibson <david@gibson.dropbear.id.au>
@@ -17,7 +17,6 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import print_function
 import time
 
 

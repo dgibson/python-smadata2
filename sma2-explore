@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 #
 # sma2-explore - Interactive tool for analyzing SMAData2 protocol
 # Copyright (C) 2014 David Gibson <david@gibson.dropbear.id.au>
@@ -196,7 +196,7 @@ class SMAData2CLI(Connection):
         while True:
             sys.stdout.write("SMA2 %s >> " % self.remote_addr)
             try:
-                line = raw_input().split()
+                line = input().split()
             except EOFError:
                 return
 

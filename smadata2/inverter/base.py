@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 #
 # smadata2.db.base - Abstract inverter interface
 # Copyright (C) 2014 David Gibson <david@gibson.dropbear.id.au>
@@ -17,8 +17,6 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import print_function
-
 import abc
 
 
@@ -29,9 +27,7 @@ class Error(Exception):
     pass
 
 
-class InverterConnection(object):
-    __metaclass__ = abc.ABCMeta
-
+class InverterConnection(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def total_yield(self):
         raise NotImplementedError()

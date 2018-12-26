@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 
 import os
 import datetime
@@ -47,7 +47,7 @@ def test_format_datetime():
 
 
 def requestkey(script, args):
-    return (script, frozenset(args.items()))
+    return (script, frozenset(list(args.items())))
 
 
 class MockAPI(smadata2.pvoutputorg.API):

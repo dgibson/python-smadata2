@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 #
 # pvoutput.py - Poke pvoutput.org with data
 # Copyright (C) 2014 Peter Barker <pbarker@barker.dropbear.id.au>
@@ -17,11 +17,10 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import print_function
-
 import sys
-import urllib
-import urllib2
+import urllib.request
+import urllib.parse
+import urllib.error
 import time
 import datetime
 
@@ -110,10 +109,11 @@ class API(object):
         """
         url = self.baseurl + script
 
-        req = urllib2.Request(url=url, data=urllib.urlencode(args))
+        req = urllib.request.Request(url=url,
+                                     data=urllib.parse.urlencode(args))
         req.add_header("X-Pvoutput-Apikey", self.apikey)
         req.add_header("X-Pvoutput-SystemId", self.sid)
-        f = urllib2.urlopen(req)
+        f = urllib.request.urlopen(req)
         code = f.getcode()
         if code != 200:
             raise Error("Bad HTTP response code (%d) on %s" % (code, url))
@@ -230,7 +230,7 @@ class API(object):
 
         try:
             data = self._request('/service/r2/getstatus.jsp', opts)
-        except urllib2.HTTPError as e:
+        except urllib.error.HTTPError as e:
             # API gives an error if no data is present
             if e.code == 400:
                 message = e.read()
@@ -260,7 +260,7 @@ class API(object):
 
         try:
             data = self._request('/service/r2/getstatus.jsp', opts)
-        except urllib2.HTTPError as e:
+        except urllib.error.HTTPError as e:
             # API gives an error if no data is present
             if e.code == 400:
                 message = e.read()

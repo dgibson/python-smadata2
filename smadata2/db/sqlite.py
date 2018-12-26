@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 #
 # smadata2.db - Database for logging data from SMA inverters
 # Copyright (C) 2014 David Gibson <david@gibson.dropbear.id.au>
@@ -17,15 +17,13 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import print_function
-
 import shutil
 import re
 import sqlite3
 import time
 import datetime
 
-from base import BaseDatabase, WrongSchema
+from .base import BaseDatabase, WrongSchema
 
 
 all = ['SQLiteDatabase']
@@ -128,7 +126,7 @@ class SQLiteDatabase(BaseDatabase):
         ORDER BY timestamp ASC"""
         c.execute(template, (serials,))
         r = c.fetchall()
-        r = map(lambda x: datetime.datetime.utcfromtimestamp(x[0]), r)
+        r = [datetime.datetime.utcfromtimestamp(x[0]) for x in r]
         return r
 
     def get_datapoint_totals_for_day(self, inverters, start_datetime):

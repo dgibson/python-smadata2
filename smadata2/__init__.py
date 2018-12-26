@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 #
 # smadata2.__init__ - Python code for the SMAData2 protocol
 # Copyright (C) 2014 David Gibson <david@gibson.dropbear.id.au>
@@ -16,7 +16,3 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
-# Nothing to see here
-
-from __future__ import print_function

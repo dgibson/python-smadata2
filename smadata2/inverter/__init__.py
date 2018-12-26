@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 #
 # smadata2.inverter - Inverter connections
 # Copyright (C) 2014 David Gibson <david@gibson.dropbear.id.au>
@@ -16,5 +16,3 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
-
-from __future__ import print_function

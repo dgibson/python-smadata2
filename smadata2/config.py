@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 #
 # smadata2.config - Configuration file handling for SMAData2 code
 # Copyright (C) 2014 David Gibson <david@gibson.dropbear.id.au>
@@ -17,19 +17,16 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import print_function
-
 import sys
 import os
 import dateutil.parser
 import dateutil.tz
 import json
 
-import inverter
-import inverter.smabluetooth
-import pvoutputorg
-import datetimeutil
-import db
+from .inverter import smabluetooth
+from . import pvoutputorg
+from . import datetimeutil
+from . import db
 
 DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
 
@@ -45,7 +42,7 @@ class SMAData2InverterConfig(object):
             self.starttime = None
 
     def connect(self):
-        return inverter.smabluetooth.Connection(self.bdaddr)
+        return smabluetooth.Connection(self.bdaddr)
 
     def connect_and_logon(self):
         conn = self.connect()

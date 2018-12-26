@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#! /usr/bin/python3
 #
 # smadata2.upload - Routines to upload information to pvoutput.org
 # Copyright (C) 2014 David Gibson <david@gibson.dropbear.id.au>
@@ -18,10 +18,8 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import print_function
-
 import datetime
-import datetimeutil
+from . import datetimeutil
 
 
 def prepare_data_for_date(date, data, tz):
