@@ -10,6 +10,7 @@ import smadata2.upload
 import smadata2.check
 import smadata2.db.sqlite
 from smadata2.db.tests import SQLiteDBChecker
+from smadata2.db import SAMPLE_ADHOC
 
 
 def test_prepare1():
@@ -60,7 +61,7 @@ class TestLoad(SQLiteDBChecker):
                                               12345, 1)
 
         for ts, y in data:
-            self.db.add_sample("TESTSERIAL", ts, y)
+            self.db.add_sample("TESTSERIAL", ts, SAMPLE_ADHOC, y)
 
         outdata = smadata2.upload.load_data_for_date(self.db, sc, date)
 

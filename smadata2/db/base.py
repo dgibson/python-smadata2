@@ -42,7 +42,7 @@ class WrongSchema(Error):
 
 class BaseDatabase(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def add_sample(self, serial, timestamp, total_yield):
+    def add_sample(self, serial, timestamp, sample_type, total_yield):
         raise NotImplementedError()
 
     @abc.abstractmethod
@@ -50,7 +50,7 @@ class BaseDatabase(object, metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_last_sample(self, serial):
+    def get_last_sample(self, serial, sample_type=None):
         raise NotImplementedError()
 
     @abc.abstractmethod

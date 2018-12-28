@@ -25,7 +25,7 @@ class MockDatabase(BaseDatabase):
         super(MockDatabase, self).__init__()
         self.samples = set()
 
-    def add_sample(self, serial, timestamp, total_yield):
+    def add_sample(self, serial, timestamp, sample_type, total_yield):
         self.samples.add((serial, timestamp, total_yield))
 
     def get_one_sample(self, serial, timestamp):
@@ -34,7 +34,7 @@ class MockDatabase(BaseDatabase):
                 return y
         return None
 
-    def get_last_sample(self, serial):
+    def get_last_sample(self, serial, sample_type=None):
         stamps = set(t for s, t, y in self.samples)
         if stamps:
             return max(stamps)

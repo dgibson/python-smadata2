@@ -71,12 +71,12 @@ class SQLiteDatabase(BaseDatabase):
     def commit(self):
         self.conn.commit()
 
-    def add_sample(self, serial, timestamp, total_yield):
+    def add_sample(self, serial, timestamp, sample_type, total_yield):
         c = self.conn.cursor()
         c.execute("INSERT INTO generation" +
                   " (inverter_serial, timestamp, sample_type, total_yield)" +
                   " VALUES (?, ?, ?, ?);",
-                  (serial, timestamp, SAMPLE_INV_FAST, total_yield))
+                  (serial, timestamp, sample_type, total_yield))
 
     def get_one_sample(self, serial, timestamp):
         c = self.conn.cursor()
@@ -87,10 +87,15 @@ class SQLiteDatabase(BaseDatabase):
         if r is not None:
             return r[0]
 
-    def get_last_sample(self, serial):
+    def get_last_sample(self, serial, sample_type=None):
         c = self.conn.cursor()
-        c.execute("SELECT max(timestamp) FROM generation"
-                  " WHERE inverter_serial = ?", (serial,))
+        if sample_type is None:
+            c.execute("SELECT max(timestamp) FROM generation"
+                      " WHERE inverter_serial = ?", (serial,))
+        else:
+            c.execute("SELECT max(timestamp) FROM generation"
+                      " WHERE inverter_serial = ? AND sample_type = ?",
+                      (serial, sample_type))
         r = c.fetchone()
         return r[0]
 

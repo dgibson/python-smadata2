@@ -70,10 +70,3 @@ for system in config.systems():
                 last = datum
         else:
             print("No new data")
-
-        # for timestamp, total in data:
-        #     if total == 0xffffffff:
-        #         continue
-        #     db.add_sample(inv.serial, timestamp, total)
-
-        # db.commit()

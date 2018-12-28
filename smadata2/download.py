@@ -19,6 +19,8 @@
 
 import time
 
+from .db import SAMPLE_INV_FAST
+
 
 def download_inverter(ic, db):
     lasttime = db.get_last_sample(ic.serial)
@@ -32,7 +34,7 @@ def download_inverter(ic, db):
     data = sma.historic(lasttime+1, now)
 
     for timestamp, total in data:
-        db.add_sample(ic.serial, timestamp, total)
+        db.add_sample(ic.serial, timestamp, SAMPLE_INV_FAST, total)
 
     db.commit()
 

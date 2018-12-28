@@ -10,6 +10,7 @@ from nose.tools import assert_equals, raises
 import smadata2.db
 import smadata2.db.mock
 from smadata2 import check
+from .base import SAMPLE_ADHOC
 
 
 def removef(filename):
@@ -77,9 +78,9 @@ class SimpleChecks(BaseDBChecker):
         # sqlite doesn't actually make a distinction
         serial = "__TEST__"
 
-        self.db.add_sample(serial, 0, 0)
-        self.db.add_sample(serial, 300, 10)
-        self.db.add_sample(serial, 3600, 20)
+        self.db.add_sample(serial, 0, SAMPLE_ADHOC, 0)
+        self.db.add_sample(serial, 300, SAMPLE_ADHOC, 10)
+        self.db.add_sample(serial, 3600, SAMPLE_ADHOC, 20)
 
         v0 = self.db.get_one_sample(serial, 0)
         assert_equals(v0, 0)
@@ -102,16 +103,16 @@ class SimpleChecks(BaseDBChecker):
     def test_get_last_sample(self):
         serial = "__TEST__"
 
-        self.db.add_sample(serial, 0, 0)
+        self.db.add_sample(serial, 0, SAMPLE_ADHOC, 0)
         assert_equals(self.db.get_last_sample(serial), 0)
 
-        self.db.add_sample(serial, 300, 0)
+        self.db.add_sample(serial, 300, SAMPLE_ADHOC, 0)
         assert_equals(self.db.get_last_sample(serial), 300)
 
-        self.db.add_sample(serial, 3600, 0)
+        self.db.add_sample(serial, 3600, SAMPLE_ADHOC, 0)
         assert_equals(self.db.get_last_sample(serial), 3600)
 
-        self.db.add_sample(serial, 2000, 0)
+        self.db.add_sample(serial, 2000, SAMPLE_ADHOC, 0)
         assert_equals(self.db.get_last_sample(serial), 3600)
 
 
@@ -129,8 +130,8 @@ class AggregateChecks(BaseDBChecker):
                                            0, 1)
 
         for ts, y in sampledata:
-            self.db.add_sample(self.serial1, ts, y)
-            self.db.add_sample(self.serial2, ts, 2*y)
+            self.db.add_sample(self.serial1, ts, SAMPLE_ADHOC, y)
+            self.db.add_sample(self.serial2, ts, SAMPLE_ADHOC, 2*y)
 
     def test_basic(self):
         for ts in range(0, self.dawn, 300):
