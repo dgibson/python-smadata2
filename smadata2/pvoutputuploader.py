@@ -134,7 +134,7 @@ class PVOutputUploader(object):
     #                                                    self.system.timezone())
     #     ids = [i.serial for i in self.system.inverters()]
     #
-    #     entries = db.get_aggregate_historic(ts_start, ts_end, ids)
+    #     entries = db.get_aggregate_samples(ts_start, ts_end, ids)
     #     entries = prepare_data_for_date(date, entries,
     #                                     self.system.timezone())
     #

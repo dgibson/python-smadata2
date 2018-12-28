@@ -42,13 +42,21 @@ class WrongSchema(Error):
 
 class BaseDatabase(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def add_historic(self, serial, timestamp, total_yield):
+    def add_sample(self, serial, timestamp, total_yield):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_one_historic(self, serial, timestamp):
+    def get_one_sample(self, serial, timestamp):
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def get_last_historic(self, serial):
+    def get_last_sample(self, serial):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def get_aggregate_one_sample(self, ts, ids):
+        raise NotImplementedError()
+
+    @abc.abstractmethod
+    def get_aggregate_samples(self, from_ts, to_ts, ids):
         raise NotImplementedError()

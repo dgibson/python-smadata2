@@ -72,47 +72,47 @@ class SimpleChecks(BaseDBChecker):
     def test_trivial(self):
         assert isinstance(self.db, smadata2.db.base.BaseDatabase)
 
-    def test_add_get_historic(self):
+    def test_add_get_sample(self):
         # Serial is defined as INTEGER, but we abuse the fact that
         # sqlite doesn't actually make a distinction
         serial = "__TEST__"
 
-        self.db.add_historic(serial, 0, 0)
-        self.db.add_historic(serial, 300, 10)
-        self.db.add_historic(serial, 3600, 20)
+        self.db.add_sample(serial, 0, 0)
+        self.db.add_sample(serial, 300, 10)
+        self.db.add_sample(serial, 3600, 20)
 
-        v0 = self.db.get_one_historic(serial, 0)
+        v0 = self.db.get_one_sample(serial, 0)
         assert_equals(v0, 0)
 
-        v300 = self.db.get_one_historic(serial, 300)
+        v300 = self.db.get_one_sample(serial, 300)
         assert_equals(v300, 10)
 
-        v3600 = self.db.get_one_historic(serial, 3600)
+        v3600 = self.db.get_one_sample(serial, 3600)
         assert_equals(v3600, 20)
 
-        vmissing = self.db.get_one_historic(serial, 9999)
+        vmissing = self.db.get_one_sample(serial, 9999)
         assert vmissing is None
 
-    def test_get_last_historic_missing(self):
+    def test_get_last_sample_missing(self):
         serial = "__TEST__"
 
-        last = self.db.get_last_historic(serial)
+        last = self.db.get_last_sample(serial)
         assert last is None
 
-    def test_get_last_historic(self):
+    def test_get_last_sample(self):
         serial = "__TEST__"
 
-        self.db.add_historic(serial, 0, 0)
-        assert_equals(self.db.get_last_historic(serial), 0)
+        self.db.add_sample(serial, 0, 0)
+        assert_equals(self.db.get_last_sample(serial), 0)
 
-        self.db.add_historic(serial, 300, 0)
-        assert_equals(self.db.get_last_historic(serial), 300)
+        self.db.add_sample(serial, 300, 0)
+        assert_equals(self.db.get_last_sample(serial), 300)
 
-        self.db.add_historic(serial, 3600, 0)
-        assert_equals(self.db.get_last_historic(serial), 3600)
+        self.db.add_sample(serial, 3600, 0)
+        assert_equals(self.db.get_last_sample(serial), 3600)
 
-        self.db.add_historic(serial, 2000, 0)
-        assert_equals(self.db.get_last_historic(serial), 3600)
+        self.db.add_sample(serial, 2000, 0)
+        assert_equals(self.db.get_last_sample(serial), 3600)
 
 
 class AggregateChecks(BaseDBChecker):
@@ -129,40 +129,40 @@ class AggregateChecks(BaseDBChecker):
                                            0, 1)
 
         for ts, y in sampledata:
-            self.db.add_historic(self.serial1, ts, y)
-            self.db.add_historic(self.serial2, ts, 2*y)
+            self.db.add_sample(self.serial1, ts, y)
+            self.db.add_sample(self.serial2, ts, 2*y)
 
     def test_basic(self):
         for ts in range(0, self.dawn, 300):
-            y1 = self.db.get_one_historic(self.serial1, ts)
-            y2 = self.db.get_one_historic(self.serial2, ts)
+            y1 = self.db.get_one_sample(self.serial1, ts)
+            y2 = self.db.get_one_sample(self.serial2, ts)
 
             assert_equals(y1, 0)
             assert_equals(y2, 0)
 
         for i, ts in enumerate(range(self.dawn, self.dusk, 300)):
-            y1 = self.db.get_one_historic(self.serial1, ts)
-            y2 = self.db.get_one_historic(self.serial2, ts)
+            y1 = self.db.get_one_sample(self.serial1, ts)
+            y2 = self.db.get_one_sample(self.serial2, ts)
 
             assert_equals(y1, i)
             assert_equals(y2, 2*i)
 
         val = (self.dusk - self.dawn - 1) // 300
         for ts in range(self.dusk, 24*3600, 300):
-            y1 = self.db.get_one_historic(self.serial1, ts)
-            y2 = self.db.get_one_historic(self.serial2, ts)
+            y1 = self.db.get_one_sample(self.serial1, ts)
+            y2 = self.db.get_one_sample(self.serial2, ts)
 
             assert_equals(y1, val)
             assert_equals(y2, 2*val)
 
     def test_aggregate_one(self):
-        val = self.db.get_aggregate_one_historic(self.dusk,
-                                                 (self.serial1, self.serial2))
+        val = self.db.get_aggregate_one_sample(self.dusk,
+                                               (self.serial1, self.serial2))
         assert_equals(val, 3*((self.dusk - self.dawn - 2) // 300))
 
     def check_aggregate_range(self, from_, to_):
-        results = self.db.get_aggregate_historic(from_, to_,
-                                                 (self.serial1, self.serial2))
+        results = self.db.get_aggregate_samples(from_, to_,
+                                                (self.serial1, self.serial2))
 
         first = results[0][0]
         last = results[-1][0]
@@ -207,8 +207,8 @@ class UpdateSQLiteChecker(SQLiteDBChecker):
     def test_preserved(self):
         serial, timestamp, tyield = self.PRESERVE_RECORD
 
-        assert_equals(self.db.get_last_historic(serial), timestamp)
-        assert_equals(self.db.get_one_historic(serial, timestamp), tyield)
+        assert_equals(self.db.get_last_sample(serial), timestamp)
+        assert_equals(self.db.get_one_sample(serial, timestamp), tyield)
 
 
 class TestUpdateNoPVO(UpdateSQLiteChecker):

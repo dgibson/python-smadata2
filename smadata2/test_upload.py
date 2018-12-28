@@ -60,7 +60,7 @@ class TestLoad(SQLiteDBChecker):
                                               12345, 1)
 
         for ts, y in data:
-            self.db.add_historic("TESTSERIAL", ts, y)
+            self.db.add_sample("TESTSERIAL", ts, y)
 
         outdata = smadata2.upload.load_data_for_date(self.db, sc, date)
 
