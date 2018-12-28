@@ -19,23 +19,30 @@
 
 import time
 
-from .db import SAMPLE_INV_FAST
+from .db import SAMPLE_INV_FAST, SAMPLE_INV_DAILY
 
 
-def download_inverter(ic, db):
-    lasttime = db.get_last_sample(ic.serial)
+def download_type(ic, db, sample_type, data_fn):
+    lasttime = db.get_last_sample(ic.serial, sample_type)
     if lasttime is None:
         lasttime = ic.starttime
 
     now = int(time.time())
 
-    sma = ic.connect_and_logon()
-
-    data = sma.historic(lasttime+1, now)
+    data = data_fn(lasttime + 1, now)
 
     for timestamp, total in data:
-        db.add_sample(ic.serial, timestamp, SAMPLE_INV_FAST, total)
+        db.add_sample(ic.serial, timestamp, sample_type, total)
+
+    return data
+
+
+def download_inverter(ic, db):
+    sma = ic.connect_and_logon()
+
+    data = download_type(ic, db, SAMPLE_INV_FAST, sma.historic)
+    data_daily = download_type(ic, db, SAMPLE_INV_DAILY, sma.historic_daily)
 
     db.commit()
 
-    return data
+    return (data, data_daily)

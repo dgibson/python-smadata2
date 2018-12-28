@@ -85,14 +85,21 @@ def download(config, args):
             print("%s (SN: %s)" % (inv.name, inv.serial))
 
             try:
-                data = smadata2.download.download_inverter(inv, db)
+                data, daily = smadata2.download.download_inverter(inv, db)
                 if len(data):
                     print("Downloaded %d observations from %s to %s"
                           % (len(data),
                              smadata2.datetimeutil.format_time(data[0][0]),
                              smadata2.datetimeutil.format_time(data[-1][0])))
                 else:
-                    print("No new data")
+                    print("No new fast sampled data")
+                if len(daily):
+                    print("Downloaded %d daily observations from %s to %s"
+                          % (len(daily),
+                             smadata2.datetimeutil.format_time(daily[0][0]),
+                             smadata2.datetimeutil.format_time(daily[-1][0])))
+                else:
+                    print("No new daily data")
             except Exception as e:
                 print("ERROR downloading inverter: %s" % e, file=sys.stderr)
 
