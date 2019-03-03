@@ -23,8 +23,11 @@ import sqlite3
 import time
 import datetime
 
-from .base import BaseDatabase, WrongSchema
-from .base import SAMPLETYPES, SAMPLE_INV_FAST
+from .. import datetimeutil
+
+from .base import BaseDatabase, WrongSchema, StaleResults
+from .base import STALE_SECONDS
+from .base import SAMPLETYPES, SAMPLE_INV_FAST, SAMPLE_INV_DAILY
 
 all = ['SQLiteDatabase']
 
@@ -99,18 +102,47 @@ class SQLiteDatabase(BaseDatabase):
         r = c.fetchone()
         return r[0]
 
-    def get_aggregate_one_sample(self, ts, ids):
+    def get_aggregate_one_sample(self, ts, ids,
+                                 sample_type=SAMPLE_INV_FAST):
         c = self.conn.cursor()
         c.execute("SELECT sum(total_yield) FROM generation"
                   " WHERE inverter_serial IN(" + ",".join("?" * len(ids)) + ")"
                   " AND timestamp = ?"
-                  " GROUP BY timestamp", tuple(ids) + (ts,))
+                  " AND sample_type = ?"
+                  " GROUP BY timestamp",
+                  tuple(ids) + (ts, sample_type))
         r = c.fetchall()
         if not r:
             return None
         assert(len(r) == 1)
         return r[0][0]
 
+    def get_yield_at(self, ts, ids,
+                     sample_type=SAMPLE_INV_FAST):
+        c = self.conn.cursor()
+        c.execute("SELECT max(total_yield), max(timestamp),"
+                  " inverter_serial FROM generation"
+                  " WHERE inverter_serial IN (" + ",".join("?" * len(ids)) + ")"
+                  " AND timestamp < ?"
+                  " GROUP BY inverter_serial",
+                  tuple(ids) + (ts,))
+        r = c.fetchall()
+        if not r:
+            return None
+        assert(len(r) == len(ids))
+        total = 0
+        for yield_, timestamp, serial in r:
+            total += yield_
+            stale = ts - timestamp
+            if stale > STALE_SECONDS:
+                msg = "Latest data from inverter {} is at {} ({} days, {} hours stale)"
+                oldtime = datetimeutil.format_time(timestamp)
+                stalehours = round(stale / 60 / 60)
+                raise StaleResults(msg.format(serial, oldtime,
+                                              stalehours // 24,
+                                              stalehours % 24))
+        return total
+        
     def get_aggregate_samples(self, from_ts, to_ts, ids):
         c = self.conn.cursor()
         template = ("SELECT timestamp, sum(total_yield) FROM generation" +

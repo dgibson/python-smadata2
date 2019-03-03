@@ -73,7 +73,7 @@ def yieldat(config, args):
         ts = smadata2.datetimeutil.totimestamp(sdt)
         ids = [inv.serial for inv in system.inverters()]
 
-        val = db.get_aggregate_one_sample(ts, ids)
+        val = db.get_yield_at(ts, ids)
         print("\tTotal generation at %s: %d Wh" % (sdt, val))
 
 

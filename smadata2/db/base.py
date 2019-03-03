@@ -28,8 +28,10 @@ SAMPLE_INV_DAILY = 2
 
 SAMPLETYPES = [SAMPLE_ADHOC, SAMPLE_INV_FAST, SAMPLE_INV_DAILY]
 
-all = ['Error', 'WrongSchema', SAMPLE_ADHOC, SAMPLE_INV_FAST, SAMPLE_INV_DAILY,
-       SAMPLETYPES]
+all = ['Error', 'WrongSchema', 'StaleResults',
+       'STALE_SECONDS',
+       'SAMPLE_ADHOC', 'SAMPLE_INV_FAST', 'SAMPLE_INV_DAILY',
+       'SAMPLETYPES']
 
 
 class Error(Exception):
@@ -37,6 +39,13 @@ class Error(Exception):
 
 
 class WrongSchema(Error):
+    pass
+
+
+# For yieldat, complain if we can't find results less than a day old
+STALE_SECONDS = 24*60*60
+
+class StaleResults(Error):
     pass
 
 
