@@ -1,4 +1,4 @@
-NOSE = nosetests-3
+NOSE = nosetests3
 PEP8 = python3-pep8
 FLAKE8 = python3-flake8
 
