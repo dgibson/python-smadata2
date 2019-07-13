@@ -239,8 +239,8 @@ class SMAData2CLI(Connection):
 
     def cmd_hello(self):
         self.tx_outer("00:00:00:00:00:00", self.remote_addr, OTYPE_HELLO,
-                      bytearray('\x00\x04\x70\x00\x01\x00\x00\x00' +
-                                '\x00\x01\x00\x00\x00'))
+                      bytearray(b'\x00\x04\x70\x00\x01\x00\x00\x00' +
+                                b'\x00\x01\x00\x00\x00'))
 
     def cmd_getvar(self, varid):
         varid = int(varid, 16)
@@ -267,7 +267,7 @@ class SMAData2CLI(Connection):
 
     def cmd_logon(self, password='0000', timeout=900):
         timeout = int(timeout)
-        self.tx_logon(password, timeout)
+        self.tx_logon(password.encode('ascii'), timeout)
 
     def cmd_gdy(self):
         self.tx_gdy()
