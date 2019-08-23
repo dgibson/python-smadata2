@@ -89,8 +89,7 @@ def main(argv=sys.argv):
     db = config.database()
     for system in config.systems():
         for inv in system.inverters():
-	    if system.name == "Sunny Scone" and inv.name == "Inverter 2":
-	       do_inv(system, inv, db)
+    	    do_inv(system, inv, db)
 
 if __name__ == '__main__':
     main()

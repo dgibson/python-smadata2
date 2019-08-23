@@ -22,6 +22,7 @@ import argparse
 import os.path
 import datetime
 import dateutil.parser
+import time
 
 import smadata2.config
 import smadata2.db.sqlite
@@ -114,6 +115,17 @@ def settime(config, args):
                 oldtime, tmp = sma.total_yield()
                 print("\t\tPrevious time: %s"
                       % (smadata2.datetimeutil.format_time(oldtime)))
+
+                newts = int(time.time())
+                newtz = smadata2.datetimeutil.get_tzoffset()
+                print("\t\tNew time: %s (TZ %d)"
+                      % (smadata2.datetimeutil.format_time(newts), newtz))
+
+                sma.set_time(newts, newtz)
+
+                newtime, tmp = sma.total_yield()
+                print("\t\tUpdated time: %s"
+                      % (smadata2.datetimeutil.format_time(newtime)))
             except Exception as e:
                 print("ERROR contacting inverter: %s" % e, file=sys.stderr)
 

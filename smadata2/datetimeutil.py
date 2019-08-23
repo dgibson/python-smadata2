@@ -51,3 +51,11 @@ def parse_time(s):
 def format_time(timestamp):
     st = time.localtime(timestamp)
     return time.strftime("%a, %d %b %Y %H:%M:%S %Z", st)
+
+
+def get_tzoffset():
+    offset = time.timezone
+    offset = -offset + 1
+    if offset < 0:
+        offset += 65536
+    return offset
