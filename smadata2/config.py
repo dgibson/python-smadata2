@@ -28,10 +28,44 @@ from . import pvoutputorg
 from . import datetimeutil
 from . import db
 
-DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
+# for var in ('HOME', 'USERPROFILE', 'HOMEPATH', 'HOMEDRIVE'):
+var = os.environ.get('USERPROFILE')
+#print var
+# DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
+# DEFAULT_CONFIG_FILE = os.environ.get('USERPROFILE') + "\.smadata2.json"
+DEFAULT_CONFIG_FILE = "C:\workspace\.smadata2.json"
+print(DEFAULT_CONFIG_FILE)
+
+
+"""Gets and prints the spreadsheet's header columns
+
+Parameters
+----------
+file_loc : str
+    The file location of the spreadsheet
+print_cols : bool, optional
+    A flag used to print the columns to the console (default is False)
+
+Returns
+-------
+list
+    a list of strings representing the header columns
+"""
 
 
 class SMAData2InverterConfig(object):
+    """Represents a PV Inverter defined in the config file with properties: inverters, timezone
+
+    Args:
+        invjson (str): json string describing the inverter.
+        code (:obj:`int`, optional): Error code.
+
+    Attributes:
+        bdaddr (str): Bluetooth address in hex, like '00:80:25:2C:11:B2'
+        serial (str): Inverter serial, like
+        name (str): Inverter name, like "West-facing"
+    """
+
     def __init__(self, invjson, defname):
         self.bdaddr = invjson["bluetooth"]
         self.serial = invjson["serial"]
@@ -45,6 +79,10 @@ class SMAData2InverterConfig(object):
         return smabluetooth.Connection(self.bdaddr)
 
     def connect_and_logon(self):
+        """ 
+        :return: conn, connection from the smabluetooth Connection
+        """
+
         conn = self.connect()
         conn.hello()
         conn.logon()
@@ -57,6 +95,19 @@ class SMAData2InverterConfig(object):
 
 
 class SMAData2SystemConfig(object):
+    """Represents the PV System defined in the config file with properties: inverters, timezone
+    
+    Args:
+        invjson (str): json string describing the inverter.
+        code (:obj:`int`, optional): Error code.
+
+    Attributes:
+        name (str): System name, like "Medway farm"
+        pvoutput_sid (str): SID, system identifier, from manufacturer
+        tz (str): Timezone, like
+
+    """
+
     def __init__(self, index, sysjson=None, invjson=None):
         if sysjson:
             assert invjson is None
@@ -97,6 +148,13 @@ class SMAData2SystemConfig(object):
 
 
 class SMAData2Config(object):
+    """Reads the json config file, generates systems list, database and pvoutput 
+    
+    Attributes:
+        configfile (file): json file, defaults is DEFAULT_CONFIG_FILE above
+
+    """
+
     def __init__(self, configfile=None):
         if configfile is None:
             configfile = DEFAULT_CONFIG_FILE

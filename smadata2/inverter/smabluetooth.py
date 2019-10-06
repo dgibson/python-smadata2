@@ -34,6 +34,7 @@ __all__ = ['Connection',
 
 OUTER_HLEN = 18
 
+# commands in SMA Level 1 packet format - see document
 OTYPE_PPP = 0x01
 OTYPE_HELLO = 0x02
 OTYPE_GETVAR = 0x03
@@ -47,20 +48,165 @@ INNER_HLEN = 36
 
 SMA_PROTOCOL_ID = 0x6560
 
+# from SBFspot.cpp
+# int getInverterData(InverterData *devList[], enum getInverterDataType type)
+#     case EnergyProduction:
+#         // SPOT_ETODAY, SPOT_ETOTAL
+#         command = 0x54000200;
+#         first = 0x00260100;
+#         last = 0x002622FF;
+#
+#     case SpotDCPower:
+#         // SPOT_PDC1, SPOT_PDC2
+#         command = 0x53800200;
+#         first = 0x00251E00;
+#         last = 0x00251EFF;
+#
+#     case SpotDCVoltage:
+#         // SPOT_UDC1, SPOT_UDC2, SPOT_IDC1, SPOT_IDC2
+#         command = 0x53800200;
+#         first = 0x00451F00;
+#         last = 0x004521FF;
+#
+#     case SpotACPower:
+#         // SPOT_PAC1, SPOT_PAC2, SPOT_PAC3
+#         command = 0x51000200;
+#         first = 0x00464000;
+#         last = 0x004642FF;
+#
+#     case SpotACVoltage:
+#         // SPOT_UAC1, SPOT_UAC2, SPOT_UAC3, SPOT_IAC1, SPOT_IAC2, SPOT_IAC3
+#         command = 0x51000200;
+#         first = 0x00464800;
+#         last = 0x004655FF;
+#
+#     case SpotGridFrequency:
+#         // SPOT_FREQ
+#         command = 0x51000200;
+#         first = 0x00465700;
+#         last = 0x004657FF;
+#
+#     case MaxACPower:
+#         // INV_PACMAX1, INV_PACMAX2, INV_PACMAX3
+#         command = 0x51000200;
+#         first = 0x00411E00;
+#         last = 0x004120FF;
+#
+#     case MaxACPower2:
+#         // INV_PACMAX1_2
+#         command = 0x51000200;
+#         first = 0x00832A00;
+#         last = 0x00832AFF;
+#
+#     case SpotACTotalPower:
+#         // SPOT_PACTOT
+#         command = 0x51000200;
+#         first = 0x00263F00;
+#         last = 0x00263FFF;
+#
+#     case TypeLabel:
+#         // INV_NAME, INV_TYPE, INV_CLASS
+#         command = 0x58000200;
+#         first = 0x00821E00;
+#         last = 0x008220FF;
+#
+#     case SoftwareVersion:
+#         // INV_SWVERSION
+#         command = 0x58000200;
+#         first = 0x00823400;
+#         last = 0x008234FF;
+#
+#     case DeviceStatus:
+#         // INV_STATUS
+#         command = 0x51800200;
+#         first = 0x00214800;
+#         last = 0x002148FF;
+#
+#     case GridRelayStatus:
+#         // INV_GRIDRELAY
+#         command = 0x51800200;
+#         first = 0x00416400;
+#         last = 0x004164FF;
+#
+#     case OperationTime:
+#         // SPOT_OPERTM, SPOT_FEEDTM
+#         command = 0x54000200;
+#         first = 0x00462E00;
+#         last = 0x00462FFF;
+#
+#     case BatteryChargeStatus:
+#         command = 0x51000200;
+#         first = 0x00295A00;
+#         last = 0x00295AFF;
+#
+#     case BatteryInfo:
+#         command = 0x51000200;
+#         first = 0x00491E00;
+#         last = 0x00495DFF;
+#
+# 	case InverterTemperature:
+# 		command = 0x52000200;
+# 		first = 0x00237700;
+# 		last = 0x002377FF;
+#
+# 	case MeteringGridMsTotW:
+# 		command = 0x51000200;
+# 		first = 0x00463600;
+# 		last = 0x004637FF;
+#
+# 	case sbftest:
+# 		command = 0x64020200;
+# 		first = 0x00618C00;
+# 		last = 0x00618FFF;
+
+# from Archdata.cpp
+# ArchiveDayData
+# writeLong(pcktBuf, 0x70000200);
+# writeLong(pcktBuf, startTime - 300);
+# writeLong(pcktBuf, startTime + 86100);
+#
+# ArchiveMonthData
+# writeLong(pcktBuf, 0x70200200);
+# writeLong(pcktBuf, startTime - 86400 - 86400);
+# writeLong(pcktBuf, startTime + 86400 * (sizeof(inverters[inv]->monthData) / sizeof(MonthData) + 1));
+#
+# ArchiveEventData
+# writeLong(pcktBuf, UserGroup == UG_USER ? 0x70100200 : 0x70120200);
+# writeLong(pcktBuf, startTime);
+# writeLong(pcktBuf, endTime);
+#
+
+
+# AF what does this do?
+# see https://realpython.com/primer-on-python-decorators/
 
 def waiter(fn):
+    """ Decorator function on the Rx functions, checks wait conditions on self, used with connection.wait() to wait for packets
+    
+    The trick is that the Rx functions have been decorated with @waiter, which augments the bare Rx function 
+    with code to check if the special wait variables are set, and if so check the results of the Rx to 
+    see if it's something we're currently waiting for, and if so put it somewhere that wait will be able to find it.
+    If the wait condition matches then save the args on the waitvar attribute.
+    attributes are created in the connection.wait() function below """
     def waitfn(self, *args):
-        fn(self, *args)
+        fn(self, *args)     #call the provided function, with any arguments from the decorated function
         if hasattr(self, '__waitcond_' + fn.__name__):
             wc = getattr(self, '__waitcond_' + fn.__name__)
             if wc is None:
                 self.waitvar = args
             else:
                 self.waitvar = wc(*args)
-    return waitfn
+    return waitfn       #return the return value of the decorated function, like rx_raw, tx_raw
 
 
 def _check_header(hdr):
+    """ Checks for known errors in the Level 1 Outer packet header (18 bytes), raises errors.
+    
+    Packet length between 18 and 91 bytes     
+    :param hdr:  bytearray  part of the pkt
+    :return: byte: packet length
+    """
+
     if len(hdr) < OUTER_HLEN:
         raise ValueError()
 
@@ -74,6 +220,14 @@ def _check_header(hdr):
 
 
 def ba2bytes(addr):
+    """Transform a bluetooth address in bytearray of length 6 to a string representation, like '00:80:25:2C:11:B2'
+    
+    This revereses the order of the bytes and formats as a string with the : delimiter
+    
+    :param addr: part of the pkt bytearray 
+    :return: string like like '00:80:25:2C:11:B2'
+    """
+
     if len(addr) != 6:
         raise ValueError("Bad length for bluetooth address")
     assert len(addr) == 6
@@ -81,6 +235,14 @@ def ba2bytes(addr):
 
 
 def bytes2ba(s):
+    """Transform a Bluetooth address in string representation to a bytearray of length 6
+
+        This reverses the order of the string and converst to bytearray
+
+        :param s string like like '00:80:25:2C:11:B2'  
+        :return: bytearray length 6, addr
+        """
+
     addr = [int(x, 16) for x in s.split(':')]
     addr.reverse()
     if len(addr) != 6:
@@ -145,20 +307,51 @@ def crc16(iv, data):
         crc = (crc >> 8) ^ crc16_table[(crc ^ b) & 0xff]
     return crc ^ 0xffff
 
+# Dictionary for SMA response data types
+# 2 byte code, Description, Unit, LongUnit, divisor
+data_unit ={
+0x1e41: ['Max power phase 1', 'W', 'Watts', 1],
+0x1f41: ['Max power phase 2', 'W', 'Watts', 1],
+0x2041: ['Max power phase 3', 'W', 'Watts', 1],
+0x3f26: ['Power now', 'W', 'Watts', 1],
+0x0126: ['Total generated', 'Wh', 'Watt hours', 1],
+0x2226: ['Total generated today', 'Wh', 'Watt hours', 1],
+0x4846: ['AC line voltage phase 1', 'V', 'Volts', 100],
+0x4946: ['AC line voltage phase 2', 'V', 'Volts', 100],
+0x4A46: ['AC line voltage phase 3', 'V', 'Volts', 100],
+0x5046: ['AC current phase 1', 'mA', 'milli Amps', 1],
+0x5746: ['Grid frequency', 'Hz', 'Hertz', 100],
+0x2e46: ['Inverter operating time', 's', 'Seconds', 1],
+0x2f46: ['Inverter feed-in time', 's', 'Seconds', 1],
+0x1f45: ['DC voltage', 'V', 'Volts', 100],
+0x2145: ['DC current', 'mA', 'milli Amps', 1],
+0x1f4a: ['????	?', 'W', '?', 1]
+}
 
 class Connection(base.InverterConnection):
+    """Connection via IP socket connection to inverter, with all functions needed to receive data
+
+    Args:
+        addr (str): Bluetooth address in hex, like '00:80:25:2C:11:B2'
+        
+    Attributes:
+
+    """
+
     MAXBUFFER = 512
     BROADCAST = "ff:ff:ff:ff:ff:ff"
     BROADCAST2 = bytearray(b'\xff\xff\xff\xff\xff\xff')
 
     def __init__(self, addr):
+        """ initialise the python IP socket as a Bluetooth socket"""
         self.sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM,
                                   socket.BTPROTO_RFCOMM)
         self.sock.connect((addr, 1))
 
         self.remote_addr = addr
-        self.local_addr = self.sock.getsockname()[0]
+        self.local_addr = self.sock.getsockname()[0]    # from pi, 'B8:27:EB:F4:80:EB'
 
+        # what is this hardcoded for?  not from the local MAC address
         self.local_addr2 = bytearray(b'\x78\x00\x3f\x10\xfb\x39')
 
         self.rxbuf = bytearray()
@@ -167,23 +360,35 @@ class Connection(base.InverterConnection):
         self.tagcounter = 0
 
     def gettag(self):
+        """Generates an incrementing tag used in PPP packets to keep them unique for this session"""
         self.tagcounter += 1
         return self.tagcounter
 
     #
     # RX side
+    # Function call order
+    # wait()  > rx()  > rx-raw()  > rx_outer()  > rx_ppp_raw()  > rx_ppp()  >rx_6560  > rxfilter_6560
     #
 
     def rx(self):
+        """Receive raw data from socket, pass up the tree to rx_raw, etc
+        
+        Called by the wait() function
+        Receive raw data from socket, to the limit of available space in rxbuf
+        :return: 
+        """
         space = self.MAXBUFFER - len(self.rxbuf)
         self.rxbuf += self.sock.recv(space)
 
         while len(self.rxbuf) >= OUTER_HLEN:
+            # get the pktlen, while checking this is the expected packet
             pktlen = _check_header(self.rxbuf[:OUTER_HLEN])
 
+            # the receive buffer should be at least as long as packet
             if len(self.rxbuf) < pktlen:
                 return
 
+            #get the packet, and clear the buffer, pkt is bytearray, e.g. 31 bytes for hello
             pkt = self.rxbuf[:pktlen]
             del self.rxbuf[:pktlen]
 
@@ -191,8 +396,9 @@ class Connection(base.InverterConnection):
 
     @waiter
     def rx_raw(self, pkt):
-        from_ = ba2bytes(pkt[4:10])
-        to_ = ba2bytes(pkt[10:16])
+        # SMA Level 1 Packet header 0 to 18 bytes
+        from_ = ba2bytes(pkt[4:10])     #"From" bluetooth address
+        to_ = ba2bytes(pkt[10:16])      #"To" bluetooth address
         type_ = bytes2int(pkt[16:18])
         payload = pkt[OUTER_HLEN:]
 
@@ -295,15 +501,29 @@ class Connection(base.InverterConnection):
 
     #
     # Tx side
+    # functions call in this order: tx_historic > tx_6560 > tx_ppp > tx_outer > tx_raw
     #
     def tx_raw(self, pkt):
+        """Transmits a raw packet via Bluetooth socket interface
+        
+        :param pkt: bytearray PPP packet
+        :return: 
+        """
         if _check_header(pkt) != len(pkt):
             raise ValueError("Bad packet")
         self.sock.send(bytes(pkt))
 
     def tx_outer(self, from_, to_, type_, payload):
-        pktlen = len(payload) + OUTER_HLEN
-        pkt = bytearray([0x7e, pktlen, 0x00, pktlen ^ 0x7e])
+        """Builds a SMA Level 1 packet from supplied Level 2, calls tx_raw to transmit
+        
+        :param from_: str source Bluetooth address in string representation 
+        :param to_: str destination Bluetooth address in string representation 
+        :param type_: int the command to send, e.g. OTYPE_PPP = 0x01 L2 Packet start
+        :param payload: bytearray Data or payload in Level 1 packet
+        :return: 
+        """
+        pktlen = len(payload) + OUTER_HLEN      #SMA Level 2 + SMA Level 1
+        pkt = bytearray([0x7e, pktlen, 0x00, pktlen ^ 0x7e])    #start, length, 0x00, check byte
         pkt += bytes2ba(from_)
         pkt += bytes2ba(to_)
         pkt += int2bytes16(type_)
@@ -312,14 +532,31 @@ class Connection(base.InverterConnection):
 
         self.tx_raw(pkt)
 
+    # PPP frame is built
+    # (Point-to-point protocol in data link layer 2)
+    # called from tx_6560 and builds the fr
     def tx_ppp(self, to_, protocol, payload):
+        """Builds a SMA Level 2 packet from payload, calls tx_outer to wrap in Level 1 packet
+        
+        Builds a SMA Level 2 packet from payload
+        Adds CRC check 2 bytes
+        Adds header and footer
+        Escapes any reserved characters that may be in the payload
+        Calls tx_outer to wrap in Level 1 packet
+        
+        :param to_: str Bluetooth address in string representation 
+        :param protocol: SMA_PROTOCOL_ID = 0x6560
+        :param payload: 
+        :return: 
+        """
+        # Build the Level 2 frame: Header 4 bytes; payload;
         frame = bytearray(b'\xff\x03')
         frame += int2bytes16(protocol)
         frame += payload
         frame += int2bytes16(crc16(0xffff, frame))
 
         rawpayload = bytearray()
-        rawpayload.append(0x7e)
+        rawpayload.append(0x7e)     #Head byte
         for b in frame:
             # Escape \x7e (FLAG), 0x7d (ESCAPE), 0x11 (XON) and 0x13 (XOFF)
             if b in [0x7e, 0x7d, 0x11, 0x13]:
@@ -327,13 +564,45 @@ class Connection(base.InverterConnection):
                 rawpayload.append(b ^ 0x20)
             else:
                 rawpayload.append(b)
-        rawpayload.append(0x7e)
+        rawpayload.append(0x7e)     #Foot byte
 
         self.tx_outer(self.local_addr, to_, OTYPE_PPP, rawpayload)
+
 
     def tx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag,
                 type_, subtype, arg1, arg2, extra=bytearray(),
                 response=False, error=0, pktcount=0, first=True):
+        """Builds a PPP frame for Transmission and calls tx_ppp to wrap for transmission
+        
+        All PPP frames observed are PPP protocol number 0x6560, which appears to
+        be an SMA allocated ID for their control protocol.
+        
+        Parameters - too many to list
+        :param from2: 
+        :param to2: 
+        :param a2: 
+        :param b1: 
+        :param b2: 
+        :param c1: 
+        :param c2: 
+        :param tag: 
+        :param type_:   byte: Command group 3; always 0x02
+        :param subtype: 2 byte:  Commmand  0x0070 Request 5 min data.
+        :param arg1: int fromtime
+        :param arg2: int totime
+        :param extra: 
+        :param response: 
+        :param error: 
+        :param pktcount: 
+        :param first: 
+        :return: 
+ 
+        :return: tag: integer unique to each PPP packet.
+        """
+
+        # Build the Level 2 frame:
+        # From byte 6 Packet length, to
+        # to byte
         if len(extra) % 4 != 0:
             raise Error("Inner protocol payloads must" +
                         " have multiple of 4 bytes length")
@@ -349,6 +618,7 @@ class Connection(base.InverterConnection):
         payload.append(c2)
         payload.extend(int2bytes16(error))
         payload.extend(int2bytes16(pktcount))
+        # first packet 0x80, subsequent are 0x00
         if first:
             xtag = tag | 0x8000
         else:
@@ -369,6 +639,7 @@ class Connection(base.InverterConnection):
         self.tx_ppp("ff:ff:ff:ff:ff:ff", SMA_PROTOCOL_ID, payload)
         return tag
 
+    #AF 0000 is hardcoded default user password for SMA inverter, as bytes
     def tx_logon(self, password=b'0000', timeout=900):
         if len(password) > 12:
             raise ValueError
@@ -381,7 +652,13 @@ class Connection(base.InverterConnection):
                             0x00, 0x01, 0x00, 0x01, tag,
                             0x040c, 0xfffd, 7, timeout, extra)
 
+
     def tx_gdy(self):
+        """ EnergyProduction:
+        like SBFSpot arg2 same, arg 1 different?
+#         // SPOT_ETODAY, SPOT_ETOTAL
+        :return: 
+        """
         return self.tx_6560(self.local_addr2, self.BROADCAST2,
                             0xa0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
                             0x200, 0x5400, 0x00262200, 0x002622ff)
@@ -406,16 +683,50 @@ class Connection(base.InverterConnection):
                             0x20a, 0xf000, 0x00236d00, 0x00236d00, payload)
 
     def tx_historic(self, fromtime, totime):
+        """Builds a SMA request command 0x7000 for 5 min data and calls tx_6560 to wrap for transmission
+        
+        called by historic function to get historic fast sample data
+        Uses
+            Command Group 3 0x02 Request
+            Commmand        0x7000 Request 5 min data.
+        
+        :param fromtime: 
+        :param totime: 
+        :return: tag: int unique packet sequence id
+        """
         return self.tx_6560(self.local_addr2, self.BROADCAST2,
                             0xe0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
                             0x200, 0x7000, fromtime, totime)
 
+
     def tx_historic_daily(self, fromtime, totime):
+        """Builds a SMA request command 0x7000 for daily data and calls tx_6560 to wrap for transmission
+        
+        called by historic function to get historic daily data
+        Uses
+            Command Group 3 0x02 Request
+            Commmand        0x7020 Request Daily data.
+        :param fromtime: 
+        :param totime: 
+        :return: 
+        """
         return self.tx_6560(self.local_addr2, self.BROADCAST2,
                             0xe0, 0x00, 0x00, 0x00, 0x00, self.gettag(),
                             0x200, 0x7020, fromtime, totime)
 
+
+    # The tx_*() function sends some request to the inverter, then we wait for a response.
+    # The wait_*() functions are wrappers around wait(), which is the magic bit. wait() takes parameters saying what
+    #  type of packet we're looking for at what protocol layer. It pokes those into some special variables
+    #  then just calls rx() until another special variable is set.
     def wait(self, class_, cond=None):
+        """ wait() calls rx() repeatedly looking for a packet that matches the waitcond
+        Sets attribute on smadata2.inverter.smabluetooth.Connection like __waitcond_rx_outer
+        
+        :param class_: 
+        :param cond: 
+        :return: 
+        """
         self.waitvar = None
         setattr(self, '__waitcond_rx_' + class_, cond)
         while self.waitvar is None:
@@ -424,9 +735,15 @@ class Connection(base.InverterConnection):
         return self.waitvar
 
     def wait_outer(self, wtype, wpl=bytearray()):
+        """Calls the above wait, with class="outer", cond = the wfn function Connection.wait_outer.<locals>.wfn
+        
+        :param wtype: Outer message types, defined above, like OTYPE_HELLO
+        :param wpl: 
+        :return: the wait function defined above, 
+        """
         def wfn(from_, to_, type_, payload):
             if ((type_ == wtype) and payload.startswith(wpl)):
-                return payload
+                return payload              #payload  a PPP packet
         return self.wait('outer', wfn)
 
     def wait_6560(self, wtag):
@@ -442,6 +759,12 @@ class Connection(base.InverterConnection):
         return self.wait('6560', tagfn)
 
     def wait_6560_multi(self, wtag):
+        """Calls the above wait, with class="6560", cond = the multiwait_6560 function
+        
+        Called from sma.historic to get multiple 5 min samples
+        :param wtag: 
+        :return: list
+        """
         tmplist = []
 
         def multiwait_6560(from2, to2, a2, b1, b2, c1, c2, tag,
@@ -472,6 +795,7 @@ class Connection(base.InverterConnection):
 
     # Operations
 
+    #AF this hello packet is not same for my router.
     def hello(self):
         hellopkt = self.wait_outer(OTYPE_HELLO)
         if hellopkt != bytearray(b'\x00\x04\x70\x00\x01\x00\x00\x00' +
@@ -515,10 +839,31 @@ class Connection(base.InverterConnection):
         daily = bytes2int(extra[8:12])
         return timestamp, daily
 
+
     def historic(self, fromtime, totime):
-        tag = self.tx_historic(fromtime, totime)
+        """ Obtain Historic data (5 minute intervals), called from download_inverter which specifies "historic" as the data_fn
+        
+        Typical values after a couple of iterations through "data"
+        extra = bytearray(b'D\x9aL\\\x81w&\x02\x00\x00\x00\x00p\x9bL\\\x81w&\x02\x00\x00\x00\x00\x9c\x9cL\\\x81w&\x02\x00\x00\x00\x00\xc8\x9dL\\\x81w&\x02\x00\x00\x00\x00\xf4\x9eL\\\x81w&\x02\x00\x00\x00\x00 \xa0L\\\x81w&\x02\x00\x00\x00\x00L\xa1L\\\x81w&\x02\x00\x00\x00\x00x\xa2L\\\x81w&\x02\x00\x00\x00\x00\xa4\xa3L\\\x81w&\x02\x00\x00\x00\x00\xd0\xa4L\\\x81w&\x02\x00\x00\x00\x00\xfc\xa5L\\\x81w&\x02\x00\x00\x00\x00(\xa7L\\\x81w&\x02\x00\x00\x00\x00T\xa8L\\\x81w&\x02\x00\x00\x00\x00\x80\xa9L\\\x81w&\x02\x00\x00\x00\x00\xac\xaaL\\\x81w&\x02\x00\x00\x00\x00\xd8\xabL\\\x81w&\x02\x00\x00\x00\x00\x04\xadL\\\x81w&\x02\x00\x00\x00\x000\xaeL\\\x81w&\x02\x00\x00\x00\x00\\\xafL\\\x81w&\x02\x00\x00\x00\x00\x88\xb0L\\\x81w&\x02\x00\x00\x00\x00\xb4\xb1L\\\x81w&\x02\x00\x00\x00\x00\xe0\xb2L\\\x81w&\x02\x00\x00\x00\x00\x0c\xb4L\\\x81w&\x02\x00\x00\x00\x008\xb5L\\\x81w&\x02\x00\x00\x00\x00d\xb6L\\\x81w&\x02\x00\x00\x00\x00\x90\xb7L\\\x81w&\x02\x00\x00\x00\x00\xbc\xb8L\\\x81w&\x02\x00\x00\x00\x00\xe8\xb9L\\\x81w&\x02\x00\x00\x00\x00\x14\xbbL\\\x81w&\x02\x00\x00\x00\x00@\xbcL\\\x81w&\x02\x00\x00\x00\x00l\xbdL\\\x81w&\x02\x00\x00\x00\x00\x98\xbeL\\\x84w&\x02\x00\x00\x00\x00\xc4\xbfL\\\x89w&\x02\x00\x00\x00\x00\xf0\xc0L\\\x91w&\x02\x00\x00\x00\x00\x1c\xc2L\\\x9cw&\x02\x00\x00\x00\x00H\xc3L\\\xa8w&\x02\x00\x00\x00\x00t\xc4L\\\xb4w&\x02\x00\x00\x00\x00\xa0\xc5L\\\xc6w&\x02\x00\x00\x00\x00')
+        from2 = bytearray(b'\x8a\x00\x1cx\xf8~')
+        fromtime = 1
+        points = [(1548523800, 36075393), (1548524100, 36075393)]
+        self = <smadata2.inverter.smabluetooth.Connection object at 0xb611c9b0>
+        subtype = 28672
+        tag = 2
+        timestamp = 1548523800
+        totime = 1550372370
+        type_ = 512
+        val = 36075393
+        
+        :param fromtime: 
+        :param totime: 
+        :return: 
+        """
+        tag = self.tx_historic(fromtime, totime)    #defines the PPP frame
         data = self.wait_6560_multi(tag)
         points = []
+        # extra in 12-byte cycle (4-byte timestamp, 4-byte value in Wh, 4-byte padding)
         for from2, type_, subtype, arg1, arg2, extra in data:
             while extra:
                 timestamp = bytes2int(extra[0:4])
@@ -528,6 +873,7 @@ class Connection(base.InverterConnection):
                     points.append((timestamp, val))
         return points
 
+    # Command: Historic data (daily intervals)
     def historic_daily(self, fromtime, totime):
         tag = self.tx_historic_daily(fromtime, totime)
         data = self.wait_6560_multi(tag)
@@ -543,9 +889,15 @@ class Connection(base.InverterConnection):
 
     def set_time(self, newtime, tzoffset):
         self.tx_set_time(newtime, tzoffset)
-
+    # end of the Connection class
 
 def ptime(str):
+    """Convert a string date, like "2013-01-01" into a timestamp 
+    
+    :param str: date like "2013-01-01" 
+    :return: int: timestamp
+    """
+
     return int(time.mktime(time.strptime(str, "%Y-%m-%d")))
 
 
@@ -570,6 +922,15 @@ def cmd_daily(sma, args):
 
 
 def cmd_historic(sma, args):
+    """ # Command: Historic data (5 minute intervals)
+    
+    called from download_inverter which specifies "historic" as the data_fn
+
+    
+    :param sma: Connection class
+    :param args: command line args, including [start-date [end-date]] fromtime, totime
+    :return: 
+    """
     fromtime = ptime("2013-01-01")
     totime = int(time.time())  # Now
     if len(args) > 1:
@@ -585,7 +946,7 @@ def cmd_historic(sma, args):
         print("[%d] %s: Total generation %d Wh"
               % (timestamp, format_time(timestamp), val))
 
-
+# appears unused.  where is this called from?
 def cmd_historic_daily(sma, args):
     fromtime = ptime("2013-01-01")
     totime = int(time.time())  # Now
@@ -602,7 +963,7 @@ def cmd_historic_daily(sma, args):
         print("[%d] %s: Total generation %d Wh"
               % (timestamp, format_time(timestamp), val))
 
-
+# code to allow running this file from command line?
 if __name__ == '__main__':
     bdaddr = None
 

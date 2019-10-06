@@ -53,6 +53,12 @@ def status(config, args):
 
 
 def yieldat(config, args):
+    """Get production at a given date
+    
+    :param config: Config from json file
+    :param args: command line arguments, including datetime
+    :return: prints val, the aggregate for the provided date
+    """
     db = config.database()
 
     if args.datetime is None:
@@ -79,6 +85,12 @@ def yieldat(config, args):
 
 
 def download(config, args):
+    """Download power history and record in database
+    
+    :param config: Config from json file
+    :param args: command line arguments, not used
+    :return: prints observations qty, from, to or error
+    """
     db = config.database()
 
     for system in config.systems():
@@ -104,7 +116,7 @@ def download(config, args):
             except Exception as e:
                 print("ERROR downloading inverter: %s" % e, file=sys.stderr)
 
-
+# AF updated by DGibson Sept 2019
 def settime(config, args):
     for system in config.systems():
         for inv in system.inverters():
@@ -159,6 +171,16 @@ def setupdb(config, args):
 
 
 def argparser():
+    """Creates argparse object for the application, imported lib    
+    
+    - ArgumentParser -- The main entry point for command-line parsing. As the
+        example above shows, the add_argument() method is used to populate
+        the parser with actions for optional and positional arguments. Then
+        the parse_args() method is invoked to convert the args at the
+        command-line into an object with attributes.
+    
+    :return: parser: ArgumentParser object, used by main
+    """
     parser = argparse.ArgumentParser(description="Work with Bluetooth"
                                      " enabled SMA photovoltaic inverters")
 
@@ -196,10 +218,11 @@ def argparser():
 
 def main(argv=sys.argv):
     parser = argparser()
-    args = parser.parse_args(argv[1:])
+    args = parser.parse_args(argv[1:])      #args is a Namespace for command line args
 
+    # creates config object, using an optional file supplied on the command line
     config = smadata2.config.SMAData2Config(args.config)
-
+    # calls
     args.func(config, args)
 
 
