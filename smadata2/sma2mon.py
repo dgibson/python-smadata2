@@ -18,7 +18,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 import sys
-import argparse
+import argparse     #see https://docs.python.org/3/howto/argparse.html
 import os.path
 import datetime
 import dateutil.parser
@@ -29,7 +29,9 @@ import smadata2.db.sqlite
 import smadata2.datetimeutil
 import smadata2.download
 import smadata2.upload
+from smadata2.datetimeutil import format_time
 
+import web_pdb
 
 def status(config, args):
     for system in config.systems():
@@ -37,6 +39,7 @@ def status(config, args):
 
         for inv in system.inverters():
             print("\t%s:" % inv.name)
+            #web_pdb.set_trace()
 
             try:
                 sma = inv.connect_and_logon()
@@ -83,6 +86,123 @@ def yieldat(config, args):
         val = db.get_yield_at(ts, ids)
         print("\tTotal generation at %s: %d Wh" % (sdt, val))
 
+def historic_daily(config, args):
+    db = config.database()
+
+    if args.fromdate is None:
+        print("No date specified", file=sys.stderr)
+        sys.exit(1)
+
+    fromdate = dateutil.parser.parse(args.fromdate)
+    todate = dateutil.parser.parse(args.todate)
+    fromtime = int(fromdate.timestamp())
+    totime = int(todate.timestamp())
+
+    for system in config.systems():
+        print("%s:" % system.name)
+
+        for inv in system.inverters():
+            print("\t%s:" % inv.name)
+            # web_pdb.set_trace()
+
+            try:
+                sma = inv.connect_and_logon()
+
+                # dtime, daily = sma.historic_daily()
+                # print("\t\tDaily generation at %s:\t%d Wh"
+                # % (smadata2.datetimeutil.format_time(dtime), daily))
+                hlist = sma.historic_daily(fromtime, totime)
+                for timestamp, val in hlist:
+                    print("[%d] %s: Total generation %d Wh"
+                          % (timestamp, format_time(timestamp), val))
+                # ttime, total = sma.total_yield()
+                # print("\t\tTotal generation at %s:\t%d Wh"
+                # % (smadata2.datetimeutil.format_time(ttime), total))
+            except Exception as e:
+                print("ERROR contacting inverter: %s" % e, file=sys.stderr)
+
+def sma_request(config, args):
+    """Get spot data from the inverters
+
+    :param config: configuration file
+    :param args:  command line args, identify the type of data requested, like 'SpotACVoltage'
+    """
+    db = config.database()
+
+    for system in config.systems():
+        print("%s:" % system.name)
+
+        for inv in system.inverters():
+            print("\t%s:" % inv.name)
+            # web_pdb.set_trace()
+
+            # try:
+            sma = inv.connect_and_logon()
+            hlist = sma.sma_request(args.request_name)
+            for index, uom, timestamp, val1, val2, val3, val4, unknown, data_type, divisor in hlist:
+                # print("%s: %f %f %f %s %s" % (format_time(timestamp), val1 / 100, val2 / 100, val3 / 100, unknown, data_type))
+                print("{0} {1}: {2:10.3f} {3:10.3f} {4:10.3f} {6}".format(data_type, index, val1 / divisor, val2 / divisor, val3 / divisor, unknown, uom))
+            # except Exception as e:
+            #     print("ERROR contacting inverter: %s" % e, file=sys.stderr)
+
+def sma_info_request(config, args):
+    """Get other information from the inverters, like model, type, dates, status
+
+    todo - does this write to a database, so structure into key-value pairs or similar
+    :param config: configuration file
+    :param args:  command line args, identify the type of data requested, like 'model'
+    """
+    db = config.database()
+
+    for system in config.systems():
+        print("%s:" % system.name)
+
+        for inv in system.inverters():
+            print("\t%s:" % inv.name)
+            # web_pdb.set_trace()
+
+            # try:
+            sma = inv.connect_and_logon()
+            hlist = sma.sma_request(args.request_name)
+            print(hlist)
+            #for index, uom, timestamp, val1, val2, val3, val4, unknown, data_type, divisor in hlist:
+                # print("%s: %f %f %f %s %s" % (format_time(timestamp), val1 / 100, val2 / 100, val3 / 100, unknown, data_type))
+            #    print("{0} {1}: {2:10.3f} {3:10.3f} {4:10.3f} {6}".format(data_type, index, val1 / divisor, val2 / divisor, val3 / divisor, unknown, uom))
+                # print("{0}: {1:.3f} {2:.3f} {3:.3f} {4:.3f} {5}".format(format_time(timestamp), val1 / 100, val2 / 100, val3 / 100, unknown, uom))
+            # except Exception as e:
+            #     print("ERROR contacting inverter: %s" % e, file=sys.stderr)
+
+
+def spotacvoltage(config, args):
+    db = config.database()
+
+    for system in config.systems():
+        print("%s:" % system.name)
+
+        for inv in system.inverters():
+            print("\t%s:" % inv.name)
+            # web_pdb.set_trace()
+
+            try:
+                sma = inv.connect_and_logon()
+
+                # dtime, daily = sma.historic_daily()
+                # print("\t\tDaily generation at %s:\t%d Wh"
+                # % (smadata2.datetimeutil.format_time(dtime), daily))
+                hlist = sma.spotacvoltage()
+                # for val in hlist:
+                # print("[%d] : Raw value %d" % (val))
+                for index, uom, timestamp, val1, val2, val3, val4, unknown, data_type, divisor in hlist:
+                    # print("%s: %f %f %f %s %s" % (format_time(timestamp), val1 / 100, val2 / 100, val3 / 100, unknown, data_type))
+                    print("{0} {1}: {2:10.3f} {3:10.3f} {4:10.3f} {6}".format(data_type, index, val1 / divisor, val2 / divisor, val3 / divisor, unknown, uom))
+                    # print("{0}: {1:.3f} {2:.3f} {3:.3f} {4:.3f} {5}".format(format_time(timestamp), val1 / 100, val2 / 100, val3 / 100, unknown, uom))
+                # for timestamp, val in hlist:
+                    # print("[%d] %s: Spot AC voltage %d Wh" % (timestamp, format_time(timestamp), val))
+                # ttime, total = sma.total_yield()
+                # print("\t\tTotal generation at %s:\t%d Wh"
+                # % (smadata2.datetimeutil.format_time(ttime), total))
+            except Exception as e:
+                print("ERROR contacting inverter: %s" % e, file=sys.stderr)
 
 def download(config, args):
     """Download power history and record in database
@@ -96,6 +216,7 @@ def download(config, args):
     for system in config.systems():
         for inv in system.inverters():
             print("%s (SN: %s)" % (inv.name, inv.serial))
+            print("starttime: %s" % (inv.starttime))
 
             try:
                 data, daily = smadata2.download.download_inverter(inv, db)
@@ -169,16 +290,27 @@ def setupdb(config, args):
     except smadata2.db.WrongSchema as e:
         print(e)
 
+#return smabluetooth.Connection(self.bdaddr)
+
+def scan(config, args):
+    try:
+        smadata2.inverter.smabluetooth.get_devices()
+    except:
+        print("Scan failed")
+
 
 def argparser():
-    """Creates argparse object for the application, imported lib    
-    
+    """Creates argparse object for the application, imported lib
+
     - ArgumentParser -- The main entry point for command-line parsing. As the
         example above shows, the add_argument() method is used to populate
         the parser with actions for optional and positional arguments. Then
         the parse_args() method is invoked to convert the args at the
         command-line into an object with attributes.
-    
+
+    Extend this for new arguments with an entry below, a corresponding display/database function above,
+    and a corresponding function in smabluetooth that gets data from the inverter
+
     :return: parser: ArgumentParser object, used by main
     """
     parser = argparse.ArgumentParser(description="Work with Bluetooth"
@@ -213,8 +345,34 @@ def argparser():
     parse_upload_date.set_defaults(func=upload)
     parse_upload_date.add_argument("--date", type=str, dest="upload_date")
 
+    help = "Get historic production for a date range"
+    parse_historic_daily = subparsers.add_parser("historic_daily", help=help)
+    parse_historic_daily.set_defaults(func=historic_daily)
+    parse_historic_daily.add_argument(type=str, dest="fromdate")
+    parse_historic_daily.add_argument(type=str, dest="todate")
+
+    help = "Get spot AC voltage now."
+    parse_spotac = subparsers.add_parser("spotacvoltage", help=help)
+    parse_spotac.set_defaults(func=spotacvoltage)
+
+    help = "Get spot reading by name (SpotACVoltage, ..) from sma_request_type ."
+    parse_sma_request = subparsers.add_parser("spot", help=help)
+    parse_sma_request.set_defaults(func=sma_request)
+    parse_sma_request.add_argument(type=str, dest="request_name")
+
+    help = "Get device Info by name (TypeLabel, ..) from sma_request_type ."
+    parse_sma_info_request = subparsers.add_parser("info", help=help)
+    parse_sma_info_request.set_defaults(func=sma_info_request)
+    parse_sma_info_request.add_argument(type=str, dest="request_name")
+
+    help = "Scan for bluetooth devices."
+    parse_scan = subparsers.add_parser("scan", help=help)
+    parse_scan.set_defaults(func=scan)
+
     return parser
 
+def ptime(str):
+    return int(time.mktime(time.strptime(str, "%Y-%m-%d")))
 
 def main(argv=sys.argv):
     parser = argparser()

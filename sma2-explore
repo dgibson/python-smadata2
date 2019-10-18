@@ -17,12 +17,15 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-from __future__ import print_function
-from __future__ import division
+#AF checked and file is python 3, so not needed
+#from __future__ import print_function
+#from __future__ import division
 import sys
 import os
 import signal
-import readline
+#import gnureadline      #readline is deprecated
+import pyreadline
+import threading
 import time
 
 from smadata2.inverter.smabluetooth import Connection
@@ -81,7 +84,7 @@ def dump_ppp(prefix, protocol, payload):
 def a65602str(addr):
     return "%02X.%02X.%02X.%02X.%02X.%02X" % tuple(addr)
 
-
+#called from
 def dump_6560(prefix, from2, to2, a2, b1, b2, c1, c2, tag,
               type_, subtype, arg1, arg2, extra,
               response, error, pktcount, first):
@@ -109,6 +112,11 @@ def dump_6560(prefix, from2, to2, a2, b1, b2, c1, c2, tag,
 
 
 class SMAData2CLI(Connection):
+    """CLI class overrides the Connection class defined in smabluetooth
+    
+    Implements most of the same functions, but calls a dump_ function first
+    the dump function prints a formatted packet format to the stdout 
+    """
     def __init__(self, addr):
         super(SMAData2CLI, self).__init__(addr)
         print("Connected %s -> %s"
@@ -119,18 +127,35 @@ class SMAData2CLI(Connection):
         if self.rxpid:
             os.kill(self.rxpid, signal.SIGTERM)
 
+    # Function call order
+    # wait()  > rx()  > rx-raw()  > rx_outer()  > rx_ppp_raw()  > rx_ppp()  >rx_6560  > rxfilter_6560
+
     def rxloop(self):
         while True:
+            #print ("Thread: running")
             self.rx()
 
+    # todo can we use https://docs.python.org/3.6/library/multiprocessing.html so this works in windows?
+    # This attempt to work with threading did not work on windows - does not return control to the main thread
+    # def start_rxthread(self):
+    #     print('start_rxthread')
+    #     print(__name__)
+    #     print(self.rxpid)
+    #     if __name__ == '__main__':
+    #         p = threading.Thread(target = self.rxloop(), args=(), daemon=True, name="rx_listen")
+    #         p.start()
+    #         print('start_main_thread')
+
+
     def start_rxthread(self):
-        self.rxpid = os.fork()
-        if self.rxpid == 0:
+        self.rxpid = os.fork() # creates another process which will resume at exactly the same place as this one
+        if self.rxpid == 0:   # is zero for child process
             while True:
                 try:
                     self.rxloop()
                 except Exception as e:
                     print(e)
+
 
     def rx_raw(self, pkt):
         print("\n" + hexdump(pkt, "Rx< "))
@@ -153,6 +178,7 @@ class SMAData2CLI(Connection):
         dump_ppp("Rx<         ", protocol, payload)
         super(SMAData2CLI, self).rx_ppp(from_, protocol, payload)
 
+    # in rx_ppp this is set: error = bytes2int(payload[18:20])
     def rx_6560(self, from2, to2, a2, b1, b2, c1, c2, tag,
                 type_, subtype, arg1, arg2, extra,
                 response, error, pktcount, first):
@@ -170,6 +196,14 @@ class SMAData2CLI(Connection):
         print("\n" + hexdump(pkt, "Tx> "))
 
     def tx_outer(self, from_, to_, type_, payload):
+        """Builds a SMA Level 1 packet from supplied Level 2, calls tx_raw to transmit
+
+        :param from_: str source Bluetooth address in string representation 
+        :param to_: str destination Bluetooth address in string representation 
+        :param type_: int the command to send, e.g. OTYPE_PPP = 0x01 L2 Packet start
+        :param payload: bytearray Data or payload in Level 1 packet
+        :return: 
+        """
         super(SMAData2CLI, self).tx_outer(from_, to_,
                                           type_, payload)
         dump_outer("Tx>     ", from_, to_, type_, payload)
@@ -238,11 +272,20 @@ class SMAData2CLI(Connection):
         self.tx_outer(from_, to_, type_, payload)
 
     def cmd_hello(self):
+        """Level 1 hello command responds to the SMA with the same data packet sent, 
+        
+        todo check hello packet from inverterm and return the same one, not a hard-coded
+        default below was wrong x01, needed x04
+        """
         self.tx_outer("00:00:00:00:00:00", self.remote_addr, OTYPE_HELLO,
-                      bytearray('\x00\x04\x70\x00\x01\x00\x00\x00' +
-                                '\x00\x01\x00\x00\x00'))
+#                   bytearray(b'\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00'))
+                    bytearray(b'\x00\x04\x70\x00\x04\x00\x00\x00\x00\x01\x00\x00\x00'))     #from Andy TL5000
 
     def cmd_getvar(self, varid):
+        """Level 1 getvar requests the value or a variable from the SMA inverter
+
+        values include:
+        """
         varid = int(varid, 16)
         self.tx_outer("00:00:00:00:00:00", self.remote_addr, OTYPE_GETVAR,
                       int2bytes16(varid))
@@ -253,6 +296,20 @@ class SMAData2CLI(Connection):
         self.tx_ppp("ff:ff:ff:ff:ff:ff", protocol, payload)
 
     def cmd_send2(self, *args):
+        """Sends a Level 2 packet request to the inverter
+        
+        COMMAND:
+	A2:		A0
+	B1,B2:		00 00
+	C1,C2:		00 00
+	Type:		0200
+	Subtype:	5400
+	Arg1:		0x00260100
+	Arg2:		0x002601ff
+	
+        :param args: 
+        :return: 
+        """
         bb = [int(x, 16) for x in args]
         a2 = bb[0]
         b1, b2 = bb[1], bb[2]
@@ -264,8 +321,8 @@ class SMAData2CLI(Connection):
         self.tx_6560(self.local_addr2, self.BROADCAST2,
                      a2, b1, b2, c1, c2, self.gettag(),
                      type_, subtype, arg1, arg2, extra)
-
-    def cmd_logon(self, password='0000', timeout=900):
+    #AF added b'
+    def cmd_logon(self, password=b'0000', timeout=900):
         timeout = int(timeout)
         self.tx_logon(password, timeout)
 
@@ -274,6 +331,9 @@ class SMAData2CLI(Connection):
 
     def cmd_yield(self):
         self.tx_yield()
+
+    def cmd_spotacvoltage(self):
+        self.tx_spotacvoltage()
 
     def cmd_historic(self, fromtime=None, totime=None):
         if fromtime is None and totime is None:
@@ -291,6 +351,9 @@ if __name__ == '__main__':
         sys.exit(1)
 
     cli = SMAData2CLI(sys.argv[1])
-
+    # attempt to thread under Windows
+    # p = threading.Thread(target=cli.rxloop(), args=(), daemon=True, name="rx_listen")
+    # p = threading.Thread(target=cli.cli(), args=(), daemon=True, name="rx_listen")
+    # p.start()
     cli.start_rxthread()
     cli.cli()

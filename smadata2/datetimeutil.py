@@ -52,6 +52,10 @@ def format_time(timestamp):
     st = time.localtime(timestamp)
     return time.strftime("%a, %d %b %Y %H:%M:%S %Z", st)
 
+def format_time2(timestamp):
+    st = time.localtime(timestamp)
+    return time.strftime("%x %X", st)
+
 
 def get_tzoffset():
     offset = time.timezone

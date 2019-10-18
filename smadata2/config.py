@@ -37,22 +37,6 @@ DEFAULT_CONFIG_FILE = "C:\workspace\.smadata2.json"
 print(DEFAULT_CONFIG_FILE)
 
 
-"""Gets and prints the spreadsheet's header columns
-
-Parameters
-----------
-file_loc : str
-    The file location of the spreadsheet
-print_cols : bool, optional
-    A flag used to print the columns to the console (default is False)
-
-Returns
--------
-list
-    a list of strings representing the header columns
-"""
-
-
 class SMAData2InverterConfig(object):
     """Represents a PV Inverter defined in the config file with properties: inverters, timezone
 
@@ -79,10 +63,10 @@ class SMAData2InverterConfig(object):
         return smabluetooth.Connection(self.bdaddr)
 
     def connect_and_logon(self):
-        """ 
+        """ Make Bluetooth connection the device
+
         :return: conn, connection from the smabluetooth Connection
         """
-
         conn = self.connect()
         conn.hello()
         conn.logon()
