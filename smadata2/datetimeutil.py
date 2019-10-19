@@ -54,7 +54,7 @@ def format_time(timestamp):
 
 def format_time2(timestamp):
     st = time.localtime(timestamp)
-    return time.strftime("%x %X", st)
+    return time.strftime("%d/%m/%y %X", st)
 
 
 def get_tzoffset():

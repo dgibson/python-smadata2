@@ -11,11 +11,13 @@
         "inverters": [{
             "name": "Inverter 1",
             "bluetooth": "00:80:25:xx:yy:zz",
-            "serial": "2130012345"
+            "serial": "2130012345",
+            "start-time": "2019-01-17"
         }, {
             "name": "Inverter 2",
             "bluetooth": "00:80:25:pp:qq:rr",
-            "serial": "2130012346"
+            "serial": "2130012346",
+            "start-time": "2019-01-24"
 	}]
     }]
 }

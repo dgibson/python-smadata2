@@ -46,7 +46,7 @@ And repeat
 
 ```
 until finished
-``
+```
 Windows
 Use of Pybluez to support Windows
 downloaded whl file from here
@@ -54,11 +54,17 @@ https://www.lfd.uci.edu/~gohlke/pythonlibs/#pybluez
 Examples tutorial:
 https://people.csail.mit.edu/albert/bluez-intro/x232.html
 
-
-
-The json file with configuration details (for development environment) should be stored separately, in a file stored in home, say: ```/home/pi/smadata2.json```
-this file should not be in Git, as it will contain the users confidential data.
-There is an example provided in the source ```/doc/example.samdata2.json``` file and below.  
+The json file with configuration details (for development environment) should be stored separately, in a file stored in home, say: ```/home/pi/smadata2.json```.
+This file should not be in Git, as it will contain the users confidential data.
+There is an example provided in the source ```/doc/example.samdata2.json``` file and below.
+The source file config.py references that file, so ensure that is  correct for your environment:
+```pythonstub
+# for Linux
+# DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
+# DEFAULT_CONFIG_FILE = os.environ.get('USERPROFILE') + "\.smadata2.json"
+# Windows
+DEFAULT_CONFIG_FILE = "C:\workspace\.smadata2.json"
+```  
 TODO - where a new user can discover these values.
 ```json
 {

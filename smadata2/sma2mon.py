@@ -43,7 +43,6 @@ def status(config, args):
 
             try:
                 sma = inv.connect_and_logon()
-
                 dtime, daily = sma.daily_yield()
                 print("\t\tDaily generation at %s:\t%d Wh"
                       % (smadata2.datetimeutil.format_time(dtime), daily))
@@ -52,7 +51,7 @@ def status(config, args):
                 print("\t\tTotal generation at %s:\t%d Wh"
                       % (smadata2.datetimeutil.format_time(ttime), total))
             except Exception as e:
-                print("ERROR contacting inverter: %s" % e, file=sys.stderr)
+                print("sma2mon ERROR contacting inverter: %s" % e, file=sys.stderr)
 
 
 def yieldat(config, args):
@@ -218,24 +217,24 @@ def download(config, args):
             print("%s (SN: %s)" % (inv.name, inv.serial))
             print("starttime: %s" % (inv.starttime))
 
-            try:
-                data, daily = smadata2.download.download_inverter(inv, db)
-                if len(data):
-                    print("Downloaded %d observations from %s to %s"
-                          % (len(data),
-                             smadata2.datetimeutil.format_time(data[0][0]),
-                             smadata2.datetimeutil.format_time(data[-1][0])))
-                else:
-                    print("No new fast sampled data")
-                if len(daily):
-                    print("Downloaded %d daily observations from %s to %s"
-                          % (len(daily),
-                             smadata2.datetimeutil.format_time(daily[0][0]),
-                             smadata2.datetimeutil.format_time(daily[-1][0])))
-                else:
-                    print("No new daily data")
-            except Exception as e:
-                print("ERROR downloading inverter: %s" % e, file=sys.stderr)
+            #try:
+            data, daily = smadata2.download.download_inverter(inv, db)
+            if len(data):
+                print("Downloaded %d observations from %s to %s"
+                      % (len(data),
+                         smadata2.datetimeutil.format_time(data[0][0]),
+                         smadata2.datetimeutil.format_time(data[-1][0])))
+            else:
+                print("No new fast sampled data")
+            if len(daily):
+                print("Downloaded %d daily observations from %s to %s"
+                      % (len(daily),
+                         smadata2.datetimeutil.format_time(daily[0][0]),
+                         smadata2.datetimeutil.format_time(daily[-1][0])))
+            else:
+                print("No new daily data")
+            #except Exception as e:
+             #   print("ERROR downloading inverter: %s" % e, file=sys.stderr)
 
 # AF updated by DGibson Sept 2019
 def settime(config, args):

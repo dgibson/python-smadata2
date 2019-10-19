@@ -155,11 +155,17 @@ def int2bytes32(v):
     return bytearray([v & 0xff, (v >> 8) & 0xff, (v >> 16) & 0xff, v >> 24])
 
 
-def bytes2int(b):
+def bytes2int(b) -> int:
+    """Convert arbitrary length bytes or bytearray in little-endian to integer
+
+    :param b: bytes, memoryview, or bytearray; converted to bytearray which is mutable
+    :return: integer
+    """
     v = 0
-    while b:
+    ba = bytearray(b)
+    while ba:
         v = v << 8
-        v += b.pop()
+        v += ba.pop()
     return v
 
 
@@ -827,7 +833,7 @@ AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.101
         for from2, type_, subtype, arg1, arg2, extra in data:
             print("%sPPP frame; protocol 0x%04x [%d bytes]"
                   % (1, 0x6560, len(extra)))
-            print(self.hexdump(extra, 0x6560, record_length/2))
+            print(self.hexdump(extra, arg1, record_length/2))
             # todo decode these number groups.
             # todo interpret the status codes
             # todo deal with default nightime values, when inverter is inactive.

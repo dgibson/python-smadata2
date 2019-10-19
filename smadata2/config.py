@@ -30,11 +30,12 @@ from . import db
 
 # for var in ('HOME', 'USERPROFILE', 'HOMEPATH', 'HOMEDRIVE'):
 var = os.environ.get('USERPROFILE')
-#print var
+# for Linux
 # DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
 # DEFAULT_CONFIG_FILE = os.environ.get('USERPROFILE') + "\.smadata2.json"
+# Windows
 DEFAULT_CONFIG_FILE = "C:\workspace\.smadata2.json"
-print(DEFAULT_CONFIG_FILE)
+# print(DEFAULT_CONFIG_FILE)
 
 
 class SMAData2InverterConfig(object):
