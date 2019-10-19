@@ -89,22 +89,36 @@ escaping, and the PPP CRC16 checksum at end of each frame.
 ### Packet type 0x02: "Hello"
 
 Upon connection, SMA device issues one of these ~once per second,
-until host replies with an identical (?) hello packet.
+until host replies with an identical (?) hello packet. 16-byte header and 15-byte payload. 
+    
+```shell script
+Rx< 0000: 7E 1F 00 61 B2 11 2C 25-80 00 00 00 00 00 00 00
+Rx< 0010: 02 00 00 04 70 00 04 00-00 00 00 01 00 00 00
+Rx<     00:80:25:2C:11:B2 -> 00:00:00:00:00:00 TYPE 02
+Rx<         HELLO!
+
+hello
+Tx> 0000: 7E 1F 00 61 00 00 00 00-00 00 B2 11 2C 25 80 00
+Tx> 0010: 02 00 00 04 70 00 04 00-00 00 00 01 00 00 00
+Tx>     00:00:00:00:00:00 -> 00:80:25:2C:11:B2 TYPE 02
+Tx>         HELLO!
+```
+    
 ```text
 Offset		Value
 ---------------------
 16		0x02
 17		0x00
-18		0x00
+18		0x00    4 byte long 0x00700400
 19		0x04
 20		0x70
 21		0x00
-22		0x01    or 0x04
-23		0x00
+22		0x01    1 byte NetID typically (0x01, 0x04)
+23		0x00    4 byte long 0x00000000
 24		0x00
 25		0x00
 26		0x00
-27		0x01		NetID???
+27		0x01    4 byte long 0x00000001
 28		0x00
 29		0x00
 30		0x00 

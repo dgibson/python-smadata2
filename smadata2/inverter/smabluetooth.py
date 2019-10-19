@@ -737,7 +737,10 @@ AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.101
         # if hellopkt != bytearray(b'\x00\x04\x70\x00\x01\x00\x00\x00' +
         #                         b'\x00\x01\x00\x00\x00'):
         # AF from my 5000TL inverter
-        if hellopkt != bytearray(b'\x00\x04\x70\x00\x04\x00\x00\x00\x00\x01\x00\x00\x00'):
+        netID = hellopkt[4]
+        print("netID: ", netID)
+#        if hellopkt != bytearray(b'\x00\x04\x70\x00\x04\x00\x00\x00\x00\x01\x00\x00\x00'):
+        if hellopkt[0:4] != bytearray(b'\x00\x04\x70\x00'):
             raise Error("Unexpected HELLO %r" % hellopkt)
         self.tx_outer("00:00:00:00:00:00", self.remote_addr,
                       OTYPE_HELLO, hellopkt)
@@ -988,6 +991,7 @@ AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.101
         :param totime: 
         :return: 
         """
+        #todo - does this need memoryview for data?
         tag = self.tx_historic(fromtime, totime)  # defines the PPP frame
         data = self.wait_6560_multi(tag)
         points = []
