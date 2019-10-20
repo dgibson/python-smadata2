@@ -59,7 +59,10 @@ class SMAData2InverterConfig(object):
             self.starttime = datetimeutil.parse_time(invjson["start-time"])
         else:
             self.starttime = None
-
+        if "password" in invjson:
+            self.password = bytearray(invjson["password"],encoding="utf-8", errors="ignore")
+        else:
+            self.password = b"0000"
     def connect(self):
         return smabluetooth.Connection(self.bdaddr)
 
@@ -70,7 +73,7 @@ class SMAData2InverterConfig(object):
         """
         conn = self.connect()
         conn.hello()
-        conn.logon()
+        conn.logon(password=self.password)
         return conn
 
     def __str__(self):

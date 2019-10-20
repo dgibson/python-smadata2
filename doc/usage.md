@@ -10,17 +10,12 @@ These instructions will get you a copy of the project up and running on your loc
 
 <!-- What things you need to install the software and how to install them.-->
 
-OS: Some type of Linux with Bluetooth support.  Works with a Raspberry Pi Zero W running Jessie/Debian.  The Python will run under Windows, but Bluetooth support needs some investigation.
-
-```plantuml
-A -> B
-```
+OS: Should run on Linux with Bluetooth support.  Tested with a Raspberry Pi Zero W running Jessie/Debian.  The application will also run under Windows, but requires PyBluez for Bluetooth support.
 
 
 ### sma2mon commands
 
-A step by step series of examples that tell you how to get a development env running
-Command-line arguments are handled by argparse https://docs.python.org/3/library/argparse.html.
+The application works by issuing a command in the form of ``python3 sma2mon [argument] ``.  Command-line arguments are handled by argparse [https://docs.python.org/3/library/argparse.html.]()
 
 #### --help
 

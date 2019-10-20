@@ -7,7 +7,9 @@ This shows examples of the available commands and typical output.
 
 ## Getting Started
 
-Ensure the application is running on your local machine with an appropriate config file. See the Deployment section in readme.md for notes on how to deploy the project on a live system.
+Ensure the application is running on your local machine.  The sma2explore command does not use the json config file. See the Deployment section in readme.md for notes on how to deploy the project on a live system.
+
+*Note that sma2-explore does not run under Windows as it uses the unsupported ``os.fork`` in ``SMAData2CLI`` to start a second thread that listens for incoming packets.* An alternative approach is needed.
 
 -------------------------
 
@@ -98,7 +100,9 @@ Rx<     00:80:25:2C:11:B2 -> 00:00:00:00:00:00 TYPE 05
 
 ```
 #### logon
-Establish an authorised connection enabling further requests.
+Establish an authorised connection enabling further requests.  
+
+The password is hard-coded as '0000'.  *Note: it does not use the config file entry.*
 
 Inverter responds with a type 01 packet, containing PPP frame.
 
@@ -148,7 +152,7 @@ Rx<                 0000: AA AA BB BB 00 00 00 00-B8 B8 B8 B8 88 88 88 88
 Rx<                 0010: 88 88 88 88
 ```
 
-#### gdy
+#### gdy  (get daily)
 Sends a SMA Level 2 request to get Daily data.
 
 Inverter responds with a type 01 packet, containing PPP frame.
@@ -240,7 +244,7 @@ Rx<                 tag 0006 (first, last)
 Rx<                 response 0x0200 subtype 0x5400
 Rx<                 0000: 01 01 26 00 F3 50 9C 5D-20 6D 64 02 00 00 00 00
 ```
-#### getvar
+#### getvar [var]
 Sends a SMA Level 1 request to get variable value, as 2 digit hex number.
 
 Variables 01, 02, 03, 04, 05, 06: valid

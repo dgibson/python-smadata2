@@ -24,7 +24,7 @@ import sys
 import os
 import signal
 #import gnureadline      #readline is deprecated
-import pyreadline
+#import pyreadline
 import threading
 import time
 

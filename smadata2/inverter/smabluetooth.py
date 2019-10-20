@@ -672,7 +672,7 @@ class Connection(base.InverterConnection):
         return self.wait('outer', wfn)
 
     def wait_6560(self, wtag):
-        """Called from all Level 2 reqeusts to get SMA protocol data
+        """Called from all Level 2 requests to get SMA protocol data
 
 AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.1010 sec to 0.0740s
         :param wtag: tag function
@@ -736,10 +736,8 @@ AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.101
         hellopkt = self.wait_outer(OTYPE_HELLO)
         # if hellopkt != bytearray(b'\x00\x04\x70\x00\x01\x00\x00\x00' +
         #                         b'\x00\x01\x00\x00\x00'):
-        # AF from my 5000TL inverter
-        netID = hellopkt[4]
-        print("netID: ", netID)
-#        if hellopkt != bytearray(b'\x00\x04\x70\x00\x04\x00\x00\x00\x00\x01\x00\x00\x00'):
+        netID = hellopkt[4]     #depends on inverter
+
         if hellopkt[0:4] != bytearray(b'\x00\x04\x70\x00'):
             raise Error("Unexpected HELLO %r" % hellopkt)
         self.tx_outer("00:00:00:00:00:00", self.remote_addr,
@@ -836,7 +834,7 @@ AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.101
         for from2, type_, subtype, arg1, arg2, extra in data:
             print("%sPPP frame; protocol 0x%04x [%d bytes]"
                   % (1, 0x6560, len(extra)))
-            print(self.hexdump(extra, arg1, record_length/2))
+            print(self.hexdump(extra, 'RX<', record_length/2))
             # todo decode these number groups.
             # todo interpret the status codes
             # todo deal with default nightime values, when inverter is inactive.

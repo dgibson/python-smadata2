@@ -12,12 +12,14 @@
             "name": "Inverter 1",
             "bluetooth": "00:80:25:xx:yy:zz",
             "serial": "2130012345",
-            "start-time": "2019-01-17"
+            "start-time": "2019-01-17",
+            "password": "0000"
         }, {
             "name": "Inverter 2",
             "bluetooth": "00:80:25:pp:qq:rr",
             "serial": "2130012346",
-            "start-time": "2019-01-24"
+            "start-time": "2019-01-24",
+            "password": "1234"
 	}]
     }]
 }
