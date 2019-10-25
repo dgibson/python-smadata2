@@ -11,20 +11,41 @@
 # :param extra: normally 0
 # response_data_type, string, used to determine how to format and store the response
 #  e.g. sma28 is 1 to n 28-byte groups
+#todo - add other commands like historic, time set,  into this format
 sma_request_type ={
-# // SPOT_UAC1, SPOT_UAC2, SPOT_UAC3, SPOT_IAC1, SPOT_IAC2, SPOT_IAC3
-'SpotACVoltage': (0x0200, 0x5100, 0x00464800, 0x004655FF, 0, 28),
+    # 5100 28-byte cycles
+'SpotACVoltage': (0x0200, 0x5100, 0x00464800, 0x004655FF, 0, 28),       # // SPOT_UAC1, SPOT_UAC2, SPOT_UAC3, SPOT_IAC1, SPOT_IAC2, SPOT_IAC3
 'SpotGridFrequency': (0x0200, 0x5100, 0x00465700, 0x004657FF, 0, 28),   # // SPOT_FREQ
 'MaxACPower': (0x0200, 0x5100, 0x00411E00, 0x004120FF, 0, 28),          # // INV_PACMAX1, INV_PACMAX2, INV_PACMAX3
 'MaxACPower2': (0x0200, 0x5100, 0x00832A00, 0x00832AFF, 0, 28),         # // INV_PACMAX1_2
 'SpotACTotalPower': (0x0200, 0x5100, 0x00263F00, 0x00263FFF, 0, 28),    # // SPOT_PACTOT
-'EnergyProduction': (0x0200, 0x5400, 0x00260100, 0x002622FF, 0, 16),    # // SPOT_ETODAY, SPOT_ETOTAL
-'SpotDCPower': (0x0200, 0x5380, 0x00251E00, 0x00251EFF, 0, 28),
-'SpotDCVoltage': (0x0200, 0x5380, 0x00451F00, 0x004521FF, 0, 28),       # // SPOT_UDC1, SPOT_UDC2, SPOT_IDC1, SPOT_IDC2
-'TypeLabel': (0x0200, 0x5800, 0x00821E00, 0x008220FF, 0, 40),           # // INV_NAME, INV_TYPE, INV_CLASS
-'SoftwareVersion': (0x0200, 0x5800, 0x00823400, 0x008234FF, 0, 40),      # // INV_SWVERSION
+
+    # 5180 40-byte cycles
 'DeviceStatus': (0x0200, 0x5180, 0x00214800, 0x002148FF, 0, 40),         # // INV_STATUS
 'GridRelayStatus': (0x0200, 0x5180, 0x00416400, 0x004164FF, 0, 40),      # // INV_GRIDRELAY
+
+'SpotDCPower': (0x0200, 0x5380, 0x00251E00, 0x00251EFF, 0, 28),
+'SpotDCVoltage': (0x0200, 0x5380, 0x00451F00, 0x004521FF, 0, 28),       # // SPOT_UDC1, SPOT_UDC2, SPOT_IDC1, SPOT_IDC2
+
+'EnergyProduction': (0x0200, 0x5400, 0x00260100, 0x002622FF, 0, 16),    # // SPOT_ETODAY, SPOT_ETOTAL
+
+    # 5800 40-byte cycles
+'TypeLabel': (0x0200, 0x5800, 0x00821E00, 0x008220FF, 0, 40),           # // INV_NAME, INV_TYPE, INV_CLASS
+'SoftwareVersion': (0x0200, 0x5800, 0x00823400, 0x008234FF, 0, 40),      # // INV_SWVERSION
+
+'Power Now EnergyProduction': (0x0200, 0x6100, 0x00260000, 0x0026FFFF, 0, 16),    # //
+'Max phase Power EnergyProduction': (0x0200, 0x6100, 0x00410000, 0x0041FFFF, 0, 16),    # //
+
+'TotalToday': (0x0200, 0x6400, 0x00260000, 0x0026FFFF, 0, 16),    # //Total generated, total generated today. ame as 5400?
+'TotalTime': (0x0200, 0x6400, 0x00460000, 0x0046FFFF, 0, 16),    # //Feed in time, operating time. Same as 5400?
+
+    # 7200 ?-byte cycles
+'Historic': (0x0200, 0x7000, 0x0, 0x0, 0, 40),           # //
+'HistoricDailyYield': (0x0200, 0x7020, 0x0, 0x0, 0, 40),      # //
+
+'SetTime': (0x0200, 0xF000, 0x0, 0x0, 0, 40),      # //
+'KeepAlive': (0x0200, 0xFFFD, 0x0, 0x0, 0, 40),      # //
+
 }
 
 # Exploring binary formation of these SMA data types
@@ -277,6 +298,10 @@ sma_data_unit ={
 0x451f: ('DC voltage String', 'V', 'Volts', 100),
 0x4521: ('DC current String', 'mA', 'milli Amps', 1),
 
+0x4624: ('Time? ', 'mA', 'milli Amps', 1),
+0x462E: ('Time? ', 'mA', 'milli Amps', 1),
+0x462F: ('Time? ', 'mA', 'milli Amps', 1),
+
 0x4648: ('AC spot line voltage phase 1', 'V', 'Volts', 100),
 0x4649: ('AC spot line voltage phase 2', 'V', 'Volts', 100),
 0x464A: ('AC spot line voltage phase 3', 'V', 'Volts', 100),
@@ -403,71 +428,70 @@ sma_data_unit ={
 # data type code, SMA, 4 values  0x10 =text, 0x08 = status, 0x00, 0x40 = Dword 64 bit data
 # :param extra: normally 0
 # todo - add these items and merge the two lists, or consider multi-language?
-## 0x4658: ('??spot Grid frequency', 'Hz', 'Hertz', 100),
 
 sma_data_element ={
-0x2148: ('OperationHealth', 0x08, 'Condition (aka INV_STATUS)'),
-0x2377: ('CoolsysTmpNom', 0x40, 'Operating condition temperatures'),
-0x251E: ('DcMsWatt', 0x40, 'DC power input (aka SPOT_PDC1 / SPOT_PDC2)'),
-0x2601: ('MeteringTotWhOut', 0x00, 'Total yield (aka SPOT_ETOTAL)'),
-0x2622: ('MeteringDyWhOut', 0x00, 'Day yield (aka SPOT_ETODAY)'),
-0x263F: ('GridMsTotW', 0x40, 'Power (aka SPOT_PACTOT)'),
-0x295A: ('BatChaStt', 0x00, 'Current battery charge status'),
-0x411E: ('OperationHealthSttOk', 0x00, 'Nominal power in Ok Mode (aka INV_PACMAX1)'),
-0x411F: ('OperationHealthSttWrn', 0x00, 'Nominal power in Warning Mode (aka INV_PACMAX2)'),
-0x4120: ('OperationHealthSttAlm', 0x00, 'Nominal power in Fault Mode (aka INV_PACMAX3)'),
-0x4164: ('OperationGriSwStt', 0x08, 'Grid relay/contactor (aka INV_GRIDRELAY)'),
-0x4166: ('OperationRmgTms', 0x00, 'Waiting time until feed-in'),
-0x451F: ('DcMsVol', 0x40, 'DC voltage input (aka SPOT_UDC1 / SPOT_UDC2)'),
-0x4521: ('DcMsAmp', 0x40, 'DC current input (aka SPOT_IDC1 / SPOT_IDC2)'),
+0x2148: ('OperationHealth', 0x08, 'Condition (aka INV_STATUS)', '','','',1),
+0x2377: ('CoolsysTmpNom', 0x40, 'Operating condition temperatures', '','','',1),
+0x251E: ('DcMsWatt', 0x40, 'DC power input (aka SPOT_PDC1 / SPOT_PDC2)', 'DC spot Power String', 'W', 'Watts', 1),
+0x2601: ('MeteringTotWhOut', 0x00, 'Total yield (aka SPOT_ETOTAL)', 'Total generated', 'kWh', 'kiloWatt hours', 1000),
+0x2622: ('MeteringDyWhOut', 0x00, 'Day yield (aka SPOT_ETODAY)','Total generated today', 'kWh', 'kiloWatt hours', 1000),
+0x263F: ('GridMsTotW', 0x40, 'Power (aka SPOT_PACTOT)', 'Power now', 'W', 'Watts', 1), #//This function gives us the time when the inverter was switched off
+0x295A: ('BatChaStt', 0x00, 'Current battery charge status', '','','',1),
+0x411E: ('OperationHealthSttOk', 0x00, 'Nominal power in Ok Mode (aka INV_PACMAX1)', 'Nominal power OK Mode', 'W', 'Watts', 1),
+0x411F: ('OperationHealthSttWrn', 0x00, 'Nominal power in Warning Mode (aka INV_PACMAX2)', 'Nominal power Warning Mode', 'W', 'Watts', 1),
+0x4120: ('OperationHealthSttAlm', 0x00, 'Nominal power in Fault Mode (aka INV_PACMAX3)', 'Nominal power Fault Mode', 'W', 'Watts', 1),
+0x4164: ('OperationGriSwStt', 0x08, 'Grid relay/contactor (aka INV_GRIDRELAY)', '','','',1),
+0x4166: ('OperationRmgTms', 0x00, 'Waiting time until feed-in', '','','',1),
+0x451F: ('DcMsVol', 0x40, 'DC voltage input (aka SPOT_UDC1 / SPOT_UDC2)', 'DC voltage String', 'V', 'Volts', 100),
+0x4521: ('DcMsAmp', 0x40, 'DC current input (aka SPOT_IDC1 / SPOT_IDC2)', 'DC current String', 'mA', 'milli Amps', 1),
 0x4623: ('MeteringPvMsTotWhOut', 0x00, 'PV generation counter reading'),
-0x4624: ('MeteringGridMsTotWhOut', 0x00, 'Grid feed-in counter reading'),
-0x4625: ('MeteringGridMsTotWhIn', 0x00, 'Grid reference counter reading'),
-0x4626: ('MeteringCsmpTotWhIn', 0x00, 'Meter reading consumption meter'),
+0x4624: ('MeteringGridMsTotWhOut', 0x00, 'Grid feed-in counter reading', 'Grid Counter? ', 'Wh', 'Watt Hours', 1),
+0x4625: ('MeteringGridMsTotWhIn', 0x00, 'Grid reference counter reading','Grid Counter? ', 'Wh', 'Watt Hours', 1),
+0x4626: ('MeteringCsmpTotWhIn', 0x00, 'Meter reading consumption meter', 'Grid Counter? ', 'Wh', 'Watt Hours', 1),
 0x4627: ('MeteringGridMsDyWhOut', 0x00, '?'),
 0x4628: ('MeteringGridMsDyWhIn', 0x00, '?'),
-0x462E: ('MeteringTotOpTms', 0x00, 'Operating time (aka SPOT_OPERTM)'),
-0x462F: ('MeteringTotFeedTms', 0x00, 'Feed-in time (aka SPOT_FEEDTM)'),
-0x4631: ('MeteringGriFailTms', 0x00, 'Power outage'),
-0x463A: ('MeteringWhIn', 0x00, 'Absorbed energy'),
-0x463B: ('MeteringWhOut', 0x00, 'Released energy'),
-0x4635: ('MeteringPvMsTotWOut', 0x40, 'PV power generated'),
-0x4636: ('MeteringGridMsTotWOut', 0x40, 'Power grid feed-in'),
-0x4637: ('MeteringGridMsTotWIn', 0x40, 'Power grid reference'),
-0x4639: ('MeteringCsmpTotWIn', 0x40, 'Consumer power'),
-0x4640: ('GridMsWphsA', 0x40, 'Power L1 (aka SPOT_PAC1)'),
-0x4641: ('GridMsWphsB', 0x40, 'Power L2 (aka SPOT_PAC2)'),
-0x4642: ('GridMsWphsC', 0x40, 'Power L3 (aka SPOT_PAC3)'),
-0x4648: ('GridMsPhVphsA', 0x00, 'Grid voltage phase L1 (aka SPOT_UAC1)'),
-0x4649: ('GridMsPhVphsB', 0x00, 'Grid voltage phase L2 (aka SPOT_UAC2)'),
-0x464A: ('GridMsPhVphsC', 0x00, 'Grid voltage phase L3 (aka SPOT_UAC3)'),
-0x4650: ('GridMsAphsA_1', 0x00, 'Grid current phase L1 (aka SPOT_IAC1)'),
-0x4651: ('GridMsAphsB_1', 0x00, 'Grid current phase L2 (aka SPOT_IAC2)'),
-0x4652: ('GridMsAphsC_1', 0x00, 'Grid current phase L3 (aka SPOT_IAC3)'),
+0x462E: ('MeteringTotOpTms', 0x00, 'Operating time (aka SPOT_OPERTM)', 'Inverter operating time', 's', 'Seconds', 1),
+0x462F: ('MeteringTotFeedTms', 0x00, 'Feed-in time (aka SPOT_FEEDTM)', 'Inverter feed-in time', 's', 'Seconds', 1),
+0x4631: ('MeteringGriFailTms', 0x00, 'Power outage', '','','',1),
+0x463A: ('MeteringWhIn', 0x00, 'Absorbed energy', '','','',1),
+0x463B: ('MeteringWhOut', 0x00, 'Released energy', '','','',1),
+0x4635: ('MeteringPvMsTotWOut', 0x40, 'PV power generated', '','','',1),
+0x4636: ('MeteringGridMsTotWOut', 0x40, 'Power grid feed-in', '','','',1),
+0x4637: ('MeteringGridMsTotWIn', 0x40, 'Power grid reference', '','','',1),
+0x4639: ('MeteringCsmpTotWIn', 0x40, 'Consumer power', '','','',1),
+0x4640: ('GridMsWphsA', 0x40, 'Power L1 (aka SPOT_PAC1)', '','','',1),
+0x4641: ('GridMsWphsB', 0x40, 'Power L2 (aka SPOT_PAC2)', '','','',1),
+0x4642: ('GridMsWphsC', 0x40, 'Power L3 (aka SPOT_PAC3)', '','','',1),
+0x4648: ('GridMsPhVphsA', 0x00, 'Grid voltage phase L1 (aka SPOT_UAC1)', 'AC spot line voltage phase 1', 'V', 'Volts', 100),
+0x4649: ('GridMsPhVphsB', 0x00, 'Grid voltage phase L2 (aka SPOT_UAC2)', 'AC spot line voltage phase 2', 'V', 'Volts', 100),
+0x464A: ('GridMsPhVphsC', 0x00, 'Grid voltage phase L3 (aka SPOT_UAC3)', 'AC spot line voltage phase 3', 'V', 'Volts', 100),
+0x4650: ('GridMsAphsA_1', 0x00, 'Grid current phase L1 (aka SPOT_IAC1)', 'AC spot current phase 1', 'mA', 'milli Amps', 1),
+0x4651: ('GridMsAphsB_1', 0x00, 'Grid current phase L2 (aka SPOT_IAC2)', 'AC spot current phase 2', 'mA', 'milli Amps', 1),
+0x4652: ('GridMsAphsC_1', 0x00, 'Grid current phase L3 (aka SPOT_IAC3)', 'AC spot current phase 3', 'mA', 'milli Amps', 1),
 0x4653: ('GridMsAphsA', 0x00, 'Grid current phase L1 (aka SPOT_IAC1_2)'),
 0x4654: ('GridMsAphsB', 0x00, 'Grid current phase L2 (aka SPOT_IAC2_2)'),
 0x4655: ('GridMsAphsC', 0x00, 'Grid current phase L3 (aka SPOT_IAC3_2)'),
-0x4657: ('GridMsHz', 0x00, 'Grid frequency (aka SPOT_FREQ)'),
-0x46AA: ('MeteringSelfCsmpSelfCsmpWh', 0x00, 'Energy consumed internally'),
-0x46AB: ('MeteringSelfCsmpActlSelfCsmp', 0x00, 'Current self-consumption'),
-0x46AC: ('MeteringSelfCsmpSelfCsmpInc', 0x00, 'Current rise in self-consumption'),
-0x46AD: ('MeteringSelfCsmpAbsSelfCsmpInc', 0x00, 'Rise in self-consumption'),
-0x46AE: ('MeteringSelfCsmpDySelfCsmpInc', 0x00, 'Rise in self-consumption today'),
-0x491E: ('BatDiagCapacThrpCnt', 0x40, 'Number of battery charge throughputs'),
-0x4926: ('BatDiagTotAhIn', 0x00, 'Amp hours counter for battery charge'),
-0x4927: ('BatDiagTotAhOut', 0x00, 'Amp hours counter for battery discharge'),
-0x495B: ('BatTmpVal', 0x40, 'Battery temperature'),
-0x495C: ('BatVol', 0x40, 'Battery voltage'),
-0x495D: ('BatAmp', 0x40, 'Battery current'),
-0x821E: ('NameplateLocation', 0x10, 'Device name (aka INV_NAME)'),
-0x821F: ('NameplateMainModel', 0x08, 'Device class (aka INV_CLASS)'),
-0x8220: ('NameplateModel', 0x08, 'Device type (aka INV_TYPE)'),
-0x8221: ('NameplateAvalGrpUsr', 0x00, 'Unknown'),
-0x8234: ('NameplatePkgRev', 0x08, 'Software package (aka INV_SWVER)'),
-0x832A: ('InverterWLim', 0x00, 'Maximum active power device (aka INV_PACMAX1_2) (Some inverters like SB3300/SB1200)'),
-0x464B: ('GridMsPhVphsA2B6100', 0x00, 'Grid voltage new-undefined'),
-0x464C: ('GridMsPhVphsB2C6100', 0x00, 'Grid voltage new-undefined'),
-0x464D: ('GridMsPhVphsC2A6100', 0x00, 'Grid voltage new-undefined'),
+0x4657: ('GridMsHz', 0x00, 'Grid frequency (aka SPOT_FREQ)', 'Spot Grid frequency', 'Hz', 'Hertz', 100),
+0x46AA: ('MeteringSelfCsmpSelfCsmpWh', 0x00, 'Energy consumed internally', '','','',1),
+0x46AB: ('MeteringSelfCsmpActlSelfCsmp', 0x00, 'Current self-consumption', '','','',1),
+0x46AC: ('MeteringSelfCsmpSelfCsmpInc', 0x00, 'Current rise in self-consumption', '','','',1),
+0x46AD: ('MeteringSelfCsmpAbsSelfCsmpInc', 0x00, 'Rise in self-consumption', '','','',1),
+0x46AE: ('MeteringSelfCsmpDySelfCsmpInc', 0x00, 'Rise in self-consumption today', '','','',1),
+0x491E: ('BatDiagCapacThrpCnt', 0x40, 'Number of battery charge throughputs', '','','',1),
+0x4926: ('BatDiagTotAhIn', 0x00, 'Amp hours counter for battery charge', '','','',1),
+0x4927: ('BatDiagTotAhOut', 0x00, 'Amp hours counter for battery discharge', '','','',1),
+0x495B: ('BatTmpVal', 0x40, 'Battery temperature', '','','',1),
+0x495C: ('BatVol', 0x40, 'Battery voltage', '','','',1),
+0x495D: ('BatAmp', 0x40, 'Battery current', '','','',1),
+0x821E: ('NameplateLocation', 0x10, 'Device name (aka INV_NAME)', '','','',1),
+0x821F: ('NameplateMainModel', 0x08, 'Device class (aka INV_CLASS)', '','','',1),
+0x8220: ('NameplateModel', 0x08, 'Device type (aka INV_TYPE)', '','','',1),
+0x8221: ('NameplateAvalGrpUsr', 0x00, 'Unknown', '','','',1),
+0x8234: ('NameplatePkgRev', 0x08, 'Software package (aka INV_SWVER)', '','','',1),
+0x832A: ('InverterWLim', 0x00, 'Maximum active power device (aka INV_PACMAX1_2) (Some inverters like SB3300/SB1200)', '','','',1),
+0x464B: ('GridMsPhVphsA2B6100', 0x00, 'Grid voltage new-undefined', '','','',1),
+0x464C: ('GridMsPhVphsB2C6100', 0x00, 'Grid voltage new-undefined', '','','',1),
+0x464D: ('GridMsPhVphsC2A6100', 0x00, 'Grid voltage new-undefined', '','','',1),
 }
 
 # From SBFSpot.h October 2019

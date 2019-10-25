@@ -20,6 +20,13 @@ Speculation:
    RS485 instead of Bluetooth connections?
     - Allows for shared use of RS485 lines, maybe?
 
+### Acknowledgements
+This has been derived from various sources, and analysis of the data"
+- David Gibson [https://github.com/dgibson]() 
+- James Ball  [http://blog.jamesball.co.uk]() 
+- SBFspot project [https://github.com/SBFspot/SBFspot]() 
+- Point-to-Point Protocol [https://en.wikipedia.org/wiki/Point-to-Point_Protocol]()
+
 ## Outer protocol
 
 Packet based protocol over RFCOMM channel 1 over Bluetooth.  The same
@@ -36,18 +43,31 @@ Offset		Value
 3		check byte, XOR of bytes 0..2 inclusive
 4..9		"From" bluetooth address
 10..15		"To" bluetooth address
-16..17		Packet type (LE16)
-
+16..17		Command type (LE16)
 18..		Payload (format depends on packet type)
+
+0x0100 - L2 packet/L2 packet end
+0x0200 - 'hello' message (from inverter, or computer)
+0x0300 - Request for information
+0x0400 - Response to request
+0x0500 - Response 3 from inverter to 'hello', followed by inverter address.
+0x0700 - Error
+0x0800 - L2 part packet
+0x0a00 - Response 1 from inverter to 'hello', followed by inverter address.
+0x0c00 - Response 2 from inverter to 'hello', followed by 0x00
 ```
 
-The bluetooth addresses are encoded in the reverse order to how they're usually written.  So `00:80:25:2C:11:B2` would be sent in the
+The Bluetooth addresses are encoded in the reverse order to how they're usually written.  So `00:80:25:2C:11:B2` would be sent in the
 packet header as: `B2 11 2C 25 80 00` and that can be seen in the example below.
 
-For packets which don't relate to the inner protocol, 00:00:00:00:00:00 seems to be used instead of the initiating host's
+For broadcast (sending the 'hello' packets) the destination address is `00:00:00:00:00:00`.
+
+For packets which don't relate to the inner protocol, `00:00:00:00:00:00` seems to be used instead of the initiating host's
 MAC address.
 
-In this example packet `50` is the length, ln, `2E` the checksum, etc.  The payload starts with the `0D 90` in the second row.  The packet is 5 rows on 16 bytes, i.e. length 0x50.
+In this example packet `50` is the length, ln, `2E` the checksum, etc.
+The payload (Level 2 packet) starts in the second row with the header `7E FF 03 60 65` and the PPP frame starts with `0D 90`.  See inner protocol below.
+The packet is 5 rows of 16 bytes, i.e. length 0x50.
 
 The payload is 52 or 0x34 bytes,  printed again for clarity below, and broken down into the known elements.
 ```sh
@@ -179,19 +199,44 @@ As type 0x01
 
 
 ## Inner protocol (PPP protocol 0x6560)
+Example:
+```sh
+Rx<         Partial PPP data frame begins frame ends
+Rx<         PPP frame; protocol 0x6560 [52 bytes]
+Rx<             0000: 0D 90 78 00 3F 10 FB 39-00 A0 8A 00 1C 78 F8 7E
+Rx<             0010: 00 00 00 00 00 00 05 80-01 02 00 54 01 00 00 00
+Rx<             0020: 01 00 00 00 01 22 26 00-81 7D 9C 5D 31 5D 00 00
+Rx<             0030: 00 00 00 00
+
+Rx<             SMA INNER PROTOCOL PACKET
+Rx<                 8A.00.1C.78.F8.7E => 78.00.3F.10.FB.39
+Rx<                 control 90 00 A0 00 00
+Rx<                 tag 0005 (first, last)
+Rx<                 response 0x0200 subtype 0x5400
+Rx<                 0000: 01 22 26 00 81 7D 9C 5D-31 5D 00 00 00 00 00 00
+```
 
 ```
+PPP header
+0       Flag byte, 0x7E, the beginning of a PPP frame 
+1       Address	0xFF, standard broadcast address
+2       Control	0x03, unnumbered data
+3..4    Protocol PPP ID of embedded data SMA Net2+ protocol  0x6560
+
+5..     Start of datagram information below:
+
 Offset		Value
 ----------------------
-0		Length of packet, in 32-bit words, including (inner) header, but not ppp header??
-1		? A2
-2..7		to address
-8		? B1
-9		? B2
-10..15		from address
-16..17		??? C1,C2
-18..19		error code?
-20..21		packet count for multi packet response
+0		    Length of packet, in 32-bit words, including (inner) header, but not ppp header??
+1	        Destination header (0xA0 broadcast; 0xE0 destination is inverter; 0x80, 0x90, 0xC0, desination is computer)
+2..7	    Destination address; 6 bytes  78.00.3F.10.FB.39
+8		    ? B1, padding 0x00
+9		    Source header ? B2 (0xA0 broadcast; 0xE0 destination is inverter; 0x80, 0x90, 0xC0, desination is computer)
+10..15		Source address; 6-bytes  8A.00.1C.78.F8.7E
+16..17		??? C1,C2 usually 0x00, 0x00
+18..19		error code?, usually 0x00, 0x15; 0x15 seems to be ack from inverter
+20  		Telegram number packet count for multi packet response; 0x00 for single packet; 0x06 means 7 packets in response
+21  		Telegram ? always 0x00 
 22..23		LE16, low 15 bits are tag value
 		MSB is "first packet" flag for multi packet response??
 24..25		Packet type
@@ -199,6 +244,10 @@ Offset		Value
 26..27		Packet subtype
 28..31		Arg 1 (LE)
 32..35		Arg 2 (LE)
+            
+            Padding
+            2-byte Frame Check Sequence
+last        Footer 0x7E, termination
 ```
 
 

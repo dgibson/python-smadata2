@@ -135,7 +135,7 @@ class SMAData2CLI(Connection):
             #print ("Thread: running")
             self.rx()
 
-    # todo can we use https://docs.python.org/3.6/library/multiprocessing.html so this works in windows?
+    # todo can we use https://docs.python.org/3.6/library/multiprocessing.html or asyncio so this works in windows?
     # This attempt to work with threading did not work on windows - does not return control to the main thread
     # def start_rxthread(self):
     #     print('start_rxthread')
@@ -274,12 +274,13 @@ class SMAData2CLI(Connection):
     def cmd_hello(self):
         """Level 1 hello command responds to the SMA with the same data packet sent, 
         
-        todo check hello packet from inverterm and return the same one, not a hard-coded
-        default below was wrong x01, needed x04
+        the smabluetooth.hello function checks hello packet NetID from inverter and returns the same one
+        This is hardcoded, as the inbound packet has not been read.
+        Byte 5 below was x01, needed x04 - inspect the packet from your inverter.
         """
         self.tx_outer("00:00:00:00:00:00", self.remote_addr, OTYPE_HELLO,
 #                   bytearray(b'\x00\x04\x70\x00\x01\x00\x00\x00\x00\x01\x00\x00\x00'))
-                    bytearray(b'\x00\x04\x70\x00\x04\x00\x00\x00\x00\x01\x00\x00\x00'))     #from Andy TL5000
+                    bytearray(b'\x00\x04\x70\x00\x04\x00\x00\x00\x00\x01\x00\x00\x00'))     #from TL5000
 
     def cmd_getvar(self, varid):
         """Level 1 getvar requests the value or a variable from the SMA inverter

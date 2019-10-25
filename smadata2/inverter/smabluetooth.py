@@ -168,8 +168,6 @@ def bytes2int(b) -> int:
         v += ba.pop()
     return v
 
-
-# todo can be memoryview()? not list
 crc16_table = [0x0000, 0x1189, 0x2312, 0x329b, 0x4624, 0x57ad, 0x6536, 0x74bf,
                0x8c48, 0x9dc1, 0xaf5a, 0xbed3, 0xca6c, 0xdbe5, 0xe97e, 0xf8f7,
                0x1081, 0x0108, 0x3393, 0x221a, 0x56a5, 0x472c, 0x75b7, 0x643e,
@@ -236,11 +234,16 @@ class Connection(base.InverterConnection):
         self.sock.connect((addr, 1))
 
         self.remote_addr = addr
-        self.local_addr = self.sock.getsockname()[0]  # from pi, 'B8:27:EB:F4:80:EB'
+        self.local_addr = self.sock.getsockname()[0]  # from pi, 'B8:27:EB:F4:80:EB', PC CC:AF:78:E9:07:62
 
         # todo what is this hardcoded for?  not from the local BT or MAC address
-        self.local_addr2 = bytearray(b'\x78\x00\x3f\x10\xfb\x39')
-
+        # James Ball: 6-byte address. It seems to be one byte value, one byte 0 then serial number (not MAC address) of device.
+        # In the example the serial number is 2001787857 which translates to 0xd1db5077.
+        # Seems to work with any value - this default from dgibson: 3F10FB39  1058077497
+        # self.local_addr2 = bytearray(b'\x78\x00\x3f\x10\xfb\x39')
+        # self.local_addr2 = bytearray(b'\xB8\x27\xEB\xF4\x80\xEB')           # B8:27:EB:F4:80:EB Pi local address
+        self.local_addr2 = bytearray(b'\xCC\xAF\x78\xE9\x07\x62')           # CC:AF:78:E9:07:62 T520 local address
+        # print('self.local_addr2', binascii.hexlify(self.local_addr2))             # as bytearray(b'x\x00?\x10\xfb9')
         self.rxbuf = bytearray()
         self.pppbuf = dict()
 
@@ -504,7 +507,7 @@ class Connection(base.InverterConnection):
  
         :return: tag: integer unique to each PPP packet.
         """
-
+        #print('tx_6560: from2 =', binascii.hexlify(from2))
         # Build the Level 2 frame:
         # From byte 6 Packet length, to
         # to byte
@@ -731,15 +734,19 @@ AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.101
 
     # Operations
 
-    # AF this hello packet is not same for my router.
     def hello(self):
-        hellopkt = self.wait_outer(OTYPE_HELLO)
+        """Sends hello packet response to the SMA device.
+
+        The packet is based on the "hello" received, and this varies with the NetID
+        NetID is 5th byte,
         # if hellopkt != bytearray(b'\x00\x04\x70\x00\x01\x00\x00\x00' +
         #                         b'\x00\x01\x00\x00\x00'):
+        """
+        hellopkt = self.wait_outer(OTYPE_HELLO)
         netID = hellopkt[4]     #depends on inverter
 
         if hellopkt[0:4] != bytearray(b'\x00\x04\x70\x00'):
-            raise Error("Unexpected HELLO %r" % hellopkt)
+            raise Error("smabluetooth: Unexpected HELLO %r" % hellopkt)
         self.tx_outer("00:00:00:00:00:00", self.remote_addr,
                       OTYPE_HELLO, hellopkt)
         self.wait_outer(0x05)
@@ -797,8 +804,8 @@ AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.101
 
     #@timing
     def sma_request(self, request_name):
-        """Generic request from device and format response in 28-byte units
-        todo split this function into parts for getting the data, and formatting repsonse/writing to db
+        """Generic request from device and pass to process_sma_record to parse output and write response.
+
         todo identify null values and exclude them
         todo 3-phase or 1-phase in settings, then query/report accordingly.
         :param request_name: string from  sma_request_type in sma_devices.py")
@@ -806,67 +813,78 @@ AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.101
         """
         # web_pdb.set_trace()    #set a breakpoint
 
-        # tag = self.tx_level2_request(0x200, 0x5100, 0x00464800, 0x004655FF, 0)
-        # print(request_name)
         sma_rq = sma_request_type.get(request_name)  # test for not found
         if not sma_rq:
             raise Error("Connection.sma_request: Requested SMA data not recognised: ", request_name, " Check sma_request_type in sma_devices.py")
         response_data_type = sma_rq[5]
+        # example: tag = self.tx_level2_request(0x200, 0x5100, 0x00464800, 0x004655FF, 0)
         tag = self.tx_level2_request(sma_rq[0], sma_rq[1], sma_rq[2], sma_rq[3], sma_rq[4])
-        # like sma_rq = (512, 21504, 2490624, 2499327, 0)
 
         data = self.wait_6560_multi(tag)
-        print("response_data_type is: ", response_data_type)
-        # web_pdb.set_trace()    #set a breakpoint
+        # print("response_data_type is: ", response_data_type)
         return self.process_sma_record(data, response_data_type)
-        # process = 'process_' + response_data_type.lower()
-        # print("process is: ", process)
-        # #temp try:
-        # function = getattr(self, process)
-        # return function(data)
-        # except Quit:
-        #     return
-        # except Exception as e:
-        #     print("Connection.sma_request: ERROR! %s" % e, process)
 
     def process_sma_record(self, data, record_length):
+        """Parse output from device, look-up data elements (units etc), return response as set of raw data records.
+
+        :param data:
+        :param record_length: say 16, 28, 40 bytes, used to slice data into records
+        :return: points, list of records as (element_name, timestamp, val1, unknown)
+        """
         points = []
         for from2, type_, subtype, arg1, arg2, extra in data:
-            print("%sPPP frame; protocol 0x%04x [%d bytes]"
-                  % (1, 0x6560, len(extra)))
+            print("%sPPP frame; protocol 0x%04x [%d bytes] [%d record length]"
+                  % (1, 0x6560, len(extra), record_length))
             print(self.hexdump(extra, 'RX<', record_length/2))
             # todo decode these number groups.
             # todo interpret the status codes
-            # todo deal with default nightime values, when inverter is inactive.
+            # todo deal with default nightime values, when inverter is inactive.  send back as nulls?
 
             while extra:
                 index = bytes2int(extra[0:1])  # index of the item (phase, object, string) part of data type
                 element = bytes2int(extra[1:3])  # 2 byte units of measure, data type 0x821E, same as the FROM arg1
                 record_type = bytes2int(extra[3:4])  # 1 byte SMA data type, same as element_type from the dict lookup
                 #uom seems to increase 1E 82, 1F 82, 20 82, etc  40by cycle
-                element_name, element_type, element_desc = sma_data_element.get(element)
-
+                element_name, element_type, element_desc, data_type, units, _, divisor = sma_data_element.get(element)
+                if not element_name:
+                    raise Error("Connection.sma_request: Requested SMA element not recognised: ", element,
+                                " Check sma_data_element in sma_devices.py")
                 timestamp = bytes2int(extra[4:8])
                 unknown = bytes2int(extra[24:28])  # padding, unused
                 # element_type 0x10 =text, 0x08 = status, 0x00, 0x40 = Dword 64 bit data
                 if ((element_type == 0x00) or (element_type == 0x40)):
-                    # TypeError: 'NoneType' object is not iterable, here due to missing element 8520
-                    data_type, units, _, divisor = sma_data_unit.get(element)
-                    val1 = bytes2int(extra[8:12])
-                    print('{} {:25} {} {:x} {:x} {}'.format(element, element_name, format_time2(timestamp), val1, unknown, element_desc))
-                    print("{0}: {1:.3f} {2}".format(format_time2(timestamp), val1 / divisor, units))
+                    #todo - this is just phase 1A, need to get 12:16, 16:20 also?
+                    # for SpotACVoltage 0xFFFFFFFF is null; for SpotDCVoltage 0x80000000 is null
+                    #todo SpotDCVoltage has 2 strings, each with values, but have same element type!!
+                    if (bytes2int(extra[8:12]) == 0xFFFFFFFF) or (bytes2int(extra[8:12]) == 0x80000000):
+                        val1 = None        #really is None
+                        print('{:x} {:25} {} {} {} {}'.format(element, element_name, format_time2(timestamp),
+                                                                  val1, units, element_desc))
+                    else:
+                        val1 = bytes2int(extra[8:12])
+                        print('{:x} {:25} {} {:.1f} {} {}'.format(element, element_name, format_time2(timestamp), val1 / divisor, units, element_desc))
+                    # print("{0}: {1:.1f} {2}".format(format_time2(timestamp), val1 / divisor, units))
                 elif element_type == 0x08:              # status
+                    # todo - this is just 1 status attribute, need to get 12:16, 16:20 also? using loop
+                    # there are three bytes of attribute, 1 byte/char of attribute value.
                     val1 = bytes2int(extra[8:12])
+                    # unsigned long attribute = ((unsigned long)get_long(pcktBuf + ii + idx)) & 0x00FFFFFF;
+                    # unsigned char attValue = pcktBuf[ii + idx + 3];
+                    # if (attribute == 0xFFFFFE) break; // End of attributes
+                    # if (attValue == 1)
+                    #     devList[inv]->DeviceStatus = attribute;
                     print('{:25} {} {:x} {:x} {}'.format(element_name, format_time2(timestamp), val1, unknown, element_desc))
                 elif element_type == 0x10:               # string
                     val1 = extra[8:22].decode(encoding="utf-8", errors="ignore")
                     print('{:25} {} {} {:x} {}'.format(element_name, format_time2(timestamp), val1, unknown, element_desc))
                 else:
                     val1 = 0        # error to raise - element not found
+                    raise Error("Connection.sma_request: Requested SMA element_type not recognised: ", element_type,
+                                " Check sma_data_element in sma_devices.py")
 
                 # note val = 0x028F5C28, 4294967295 after hours, 11pm means NULL or?
                 extra = extra[record_length:]
-                #to do - 2 bytes, not 4? check for element not found?
+                #todo - 2 bytes, not 4? check for element not found?
                 if element != 0xffffffff:
                     #points.append((index, units, timestamp, val1, val2, val3, val4, unknown, data_type, divisor))
                     #todo, apply divisor, send units?
