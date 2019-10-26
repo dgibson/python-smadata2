@@ -23,6 +23,8 @@ import dateutil.parser
 import dateutil.tz
 import json
 
+import logging.config
+
 from .inverter import smabluetooth
 from . import pvoutputorg
 from . import datetimeutil
@@ -52,6 +54,7 @@ class SMAData2InverterConfig(object):
     """
 
     def __init__(self, invjson, defname):
+        self.log = logging.getLogger(__name__)
         self.bdaddr = invjson["bluetooth"]
         self.serial = invjson["serial"]
         self.name = invjson.get("name", defname)
@@ -97,6 +100,7 @@ class SMAData2SystemConfig(object):
     """
 
     def __init__(self, index, sysjson=None, invjson=None):
+        self.log = logging.getLogger(__name__)
         if sysjson:
             assert invjson is None
 
@@ -144,6 +148,7 @@ class SMAData2Config(object):
     """
 
     def __init__(self, configfile=None):
+        self.log = logging.getLogger(__name__)
         if configfile is None:
             configfile = DEFAULT_CONFIG_FILE
 

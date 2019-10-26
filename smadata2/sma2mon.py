@@ -24,6 +24,9 @@ import datetime
 import dateutil.parser
 import time
 
+import logging.config
+log = logging.getLogger(__name__)  # once in each module
+
 import smadata2.config
 import smadata2.db.sqlite
 import smadata2.datetimeutil
@@ -35,23 +38,23 @@ import web_pdb
 
 def status(config, args):
     for system in config.systems():
-        print("%s:" % system.name)
+        config.log.info("%s:" % system.name)
 
         for inv in system.inverters():
-            print("\t%s:" % inv.name)
+            config.log.info("\t%s:" % inv.name)
             #web_pdb.set_trace()
 
             try:
                 sma = inv.connect_and_logon()
                 dtime, daily = sma.daily_yield()
-                print("\t\tDaily generation at %s:\t%d Wh"
+                config.log.info("\tDaily generation at %s:\t%d Wh"
                       % (smadata2.datetimeutil.format_time(dtime), daily))
 
                 ttime, total = sma.total_yield()
-                print("\t\tTotal generation at %s:\t%d Wh"
-                      % (smadata2.datetimeutil.format_time(ttime), total))
+                config.log.info("\tTotal generation at %s:\t%d Wh"
+                       % (smadata2.datetimeutil.format_time(ttime), total))
             except Exception as e:
-                print("sma2mon ERROR contacting inverter: %s" % e, file=sys.stderr)
+                config.log.error("sma2mon ERROR contacting inverter: %s" % e, file=sys.stderr)
 
 
 def yieldat(config, args):
@@ -374,8 +377,10 @@ def ptime(str):
     return int(time.mktime(time.strptime(str, "%Y-%m-%d")))
 
 def main(argv=sys.argv):
+
     parser = argparser()
     args = parser.parse_args(argv[1:])      #args is a Namespace for command line args
+    #log.debug("Startup with args: ", args)
 
     # creates config object, using an optional file supplied on the command line
     config = smadata2.config.SMAData2Config(args.config)
@@ -384,4 +389,5 @@ def main(argv=sys.argv):
 
 
 if __name__ == '__main__':
+    #log = logging.getLogger(__name__)  # once in each module
     main()

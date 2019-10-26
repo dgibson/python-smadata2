@@ -22,6 +22,8 @@ import sys
 import getopt
 import time
 import socket
+import logging.config
+
 from smadata2.inverter.sma_devices import *
 # AF for Windows
 from bluetooth import *
@@ -230,6 +232,7 @@ class Connection(base.InverterConnection):
         # self.sock.connect((addr, 1))
 
         # Windows connection
+        self.log = logging.getLogger(__name__)
         self.sock = BluetoothSocket(RFCOMM)
         self.sock.connect((addr, 1))
 
@@ -244,6 +247,7 @@ class Connection(base.InverterConnection):
         # self.local_addr2 = bytearray(b'\xB8\x27\xEB\xF4\x80\xEB')           # B8:27:EB:F4:80:EB Pi local address
         self.local_addr2 = bytearray(b'\xCC\xAF\x78\xE9\x07\x62')           # CC:AF:78:E9:07:62 T520 local address
         # print('self.local_addr2', binascii.hexlify(self.local_addr2))             # as bytearray(b'x\x00?\x10\xfb9')
+        self.log.debug('self.local_addr2: %s', (binascii.hexlify(self.local_addr2)).decode())
         self.rxbuf = bytearray()
         self.pppbuf = dict()
 
@@ -833,9 +837,9 @@ AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.101
         """
         points = []
         for from2, type_, subtype, arg1, arg2, extra in data:
-            print("%sPPP frame; protocol 0x%04x [%d bytes] [%d record length]"
+            self.log.debug("%sPPP frame; protocol 0x%04x [%d bytes] [%d record length]"
                   % (1, 0x6560, len(extra), record_length))
-            print(self.hexdump(extra, 'RX<', record_length/2))
+            self.log.debug(self.hexdump(extra, 'RX<', record_length/2))
             # todo decode these number groups.
             # todo interpret the status codes
             # todo deal with default nightime values, when inverter is inactive.  send back as nulls?
@@ -858,11 +862,11 @@ AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.101
                     #todo SpotDCVoltage has 2 strings, each with values, but have same element type!!
                     if (bytes2int(extra[8:12]) == 0xFFFFFFFF) or (bytes2int(extra[8:12]) == 0x80000000):
                         val1 = None        #really is None
-                        print('{:x} {:25} {} {} {} {}'.format(element, element_name, format_time2(timestamp),
+                        logstr = ('{:x} {:25} {} {} {} {}'.format(element, element_name, format_time2(timestamp),
                                                                   val1, units, element_desc))
                     else:
                         val1 = bytes2int(extra[8:12])
-                        print('{:x} {:25} {} {:.1f} {} {}'.format(element, element_name, format_time2(timestamp), val1 / divisor, units, element_desc))
+                        logstr = ('{:x} {:25} {} {:.1f} {} {}'.format(element, element_name, format_time2(timestamp), val1 / divisor, units, element_desc))
                     # print("{0}: {1:.1f} {2}".format(format_time2(timestamp), val1 / divisor, units))
                 elif element_type == 0x08:              # status
                     # todo - this is just 1 status attribute, need to get 12:16, 16:20 also? using loop
@@ -873,21 +877,21 @@ AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.101
                     # if (attribute == 0xFFFFFE) break; // End of attributes
                     # if (attValue == 1)
                     #     devList[inv]->DeviceStatus = attribute;
-                    print('{:25} {} {:x} {:x} {}'.format(element_name, format_time2(timestamp), val1, unknown, element_desc))
-                elif element_type == 0x10:               # string
-                    val1 = extra[8:22].decode(encoding="utf-8", errors="ignore")
-                    print('{:25} {} {} {:x} {}'.format(element_name, format_time2(timestamp), val1, unknown, element_desc))
+                    logstr =('{:25} {} {:x} {:x} {}'.format(element_name, format_time2(timestamp), val1, unknown, element_desc))
+                elif element_type == 0x10:               # string in 8:14, other bytes unused
+                    val1 = extra[8:14].decode(encoding="utf-8", errors="ignore")
+                    logstr =('{:25} {} {} {:x} {}'.format(element_name, format_time2(timestamp), val1, unknown, element_desc))
                 else:
                     val1 = 0        # error to raise - element not found
                     raise Error("Connection.sma_request: Requested SMA element_type not recognised: ", element_type,
                                 " Check sma_data_element in sma_devices.py")
-
+                self.log.info(logstr)
                 # note val = 0x028F5C28, 4294967295 after hours, 11pm means NULL or?
                 extra = extra[record_length:]
                 #todo - 2 bytes, not 4? check for element not found?
                 if element != 0xffffffff:
                     #points.append((index, units, timestamp, val1, val2, val3, val4, unknown, data_type, divisor))
-                    #todo, apply divisor, send units?
+                    #todo, apply divisor, send units (not for db)?
                     #print({element_name},  {format_time(timestamp)}, {val1:x}, {unknown:x})
                     points.append((element_name,  timestamp, val1, unknown))
         return points
@@ -918,7 +922,7 @@ AF: changed to memoryview(extra)) from extra. Appears to reduce time from  0.101
                 s = s[:-1]
             return s
         except Exception as e:
-            print("Connection.hexdump: ERROR! %s" % e,)
+            self.log.error("Connection.hexdump: ERROR! %s" % e,)
             raise e
 
 
@@ -1137,6 +1141,7 @@ def get_devices():
 
 # code to allow running this file from command line?
 if __name__ == '__main__':
+
     bdaddr = None
 
     optlist, args = getopt.getopt(sys.argv[1:], 'b:')
