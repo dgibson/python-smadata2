@@ -23,6 +23,7 @@ import os.path
 import datetime
 import dateutil.parser
 import time
+import csv
 
 import smadata2.config
 import smadata2.db.sqlite
@@ -191,15 +192,26 @@ def yieldlog(config, args):
                                 end.microsecond, tzinfo=system.timezone())
     end_ts = smadata2.datetimeutil.totimestamp(end)
 
-    print("{}: {} ({}) .. {} ({})".format(system.name,
-                                          start, start_ts,
-                                          end, end_ts))
+    if args.csv:
+        csvf = csv.writer(sys.stdout)
+    else:
+        print("{}: {} ({}) .. {} ({})".format(system.name,
+                                              start, start_ts,
+                                              end, end_ts))
+
     ids = [inv.serial for inv in system.inverters()]
     data = db.get_daily_yields(start_ts, end_ts, ids)
-    print("Date\t\t\t" + "\t".join(inv.name for inv in system.inverters()))
+    if args.csv:
+        csvf.writerow(["Date"] + [inv.name for inv in system.inverters()])
+    else:
+        print("Date\t\t\t" + "\t".join(inv.name for inv in system.inverters()))
     for row in data:
-        print(smadata2.datetimeutil.format_date(row[0]) + "\t"
-              + "\t".join(str(y) for y in row[1:]))
+        if args.csv:
+            ds = time.strftime(time.strftime("%Y-%m-%d", time.localtime(row[0])))
+            csvf.writerow((ds,) + row[1:])
+        else:
+            print(smadata2.datetimeutil.format_date(row[0]) + "\t"
+                  + "\t".join(str(y) for y in row[1:]))
 
 
 def argparser():
@@ -240,7 +252,8 @@ def argparser():
     parse_yieldlog.set_defaults(func=yieldlog)
     parse_yieldlog.add_argument(type=str, dest="start")
     parse_yieldlog.add_argument(type=str, dest="end")
-    parse_yieldlog.add_argument(type=str, dest="system")
+    parse_yieldlog.add_argument("--system", type=str, dest="system", default="")
+    parse_yieldlog.add_argument("--csv", action='store_true', dest="csv")
 
     return parser
 
