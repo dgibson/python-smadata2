@@ -158,6 +158,50 @@ def setupdb(config, args):
         print(e)
 
 
+def yieldlog(config, args):
+    db = config.database()
+
+    if args.start is None:
+        print("No start date specified", file=sys.stderr)
+        sys.exit(1)
+
+    if args.end is None:
+        print("No end date specified", file=sys.stderr)
+        sys.exit(1)
+
+    start = dateutil.parser.parse(args.start)
+    end = dateutil.parser.parse(args.end)
+
+    l = [s for s in config.systems() if s.name.find(args.system) >= 0]
+    if len(l) != 1:
+        print("Must specify exactly one system", file=sys.stderr)
+        sys.exit(1)
+
+    system = l[0]
+
+    if start.tzinfo is None:
+        start = datetime.datetime(start.year, start.month, start.day,
+                                  start.hour, start.minute, start.second,
+                                  start.microsecond, tzinfo=system.timezone())
+    start_ts = smadata2.datetimeutil.totimestamp(start)
+
+    if end.tzinfo is None:
+        end = datetime.datetime(end.year, end.month, end.day,
+                                end.hour, end.minute, end.second,
+                                end.microsecond, tzinfo=system.timezone())
+    end_ts = smadata2.datetimeutil.totimestamp(end)
+
+    print("{}: {} ({}) .. {} ({})".format(system.name,
+                                          start, start_ts,
+                                          end, end_ts))
+    ids = [inv.serial for inv in system.inverters()]
+    data = db.get_daily_yields(start_ts, end_ts, ids)
+    print("Date\t\t\t" + "\t".join(inv.name for inv in system.inverters()))
+    for row in data:
+        print(smadata2.datetimeutil.format_date(row[0]) + "\t"
+              + "\t".join(str(y) for y in row[1:]))
+
+
 def argparser():
     parser = argparse.ArgumentParser(description="Work with Bluetooth"
                                      " enabled SMA photovoltaic inverters")
@@ -190,6 +234,13 @@ def argparser():
     parse_upload_date = subparsers.add_parser("upload", help=help)
     parse_upload_date.set_defaults(func=upload)
     parse_upload_date.add_argument("--date", type=str, dest="upload_date")
+
+    help = "Get daily production totals"
+    parse_yieldlog = subparsers.add_parser("yieldlog", help=help)
+    parse_yieldlog.set_defaults(func=yieldlog)
+    parse_yieldlog.add_argument(type=str, dest="start")
+    parse_yieldlog.add_argument(type=str, dest="end")
+    parse_yieldlog.add_argument(type=str, dest="system")
 
     return parser
 

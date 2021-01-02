@@ -142,7 +142,27 @@ class SQLiteDatabase(BaseDatabase):
                                               stalehours // 24,
                                               stalehours % 24))
         return total
-        
+
+    def get_daily_yields(self, from_ts, to_ts, ids):
+        subqs = []
+        for n, iid in enumerate(ids):
+            subq = ("(SELECT timestamp AS ts{}, total_yield AS yield{}" +
+                    " FROM generation" +
+                    " WHERE sample_type = {} " +
+                    "  AND inverter_serial = ?)").format(n, n, SAMPLE_INV_DAILY)
+            subqs.append(subq)
+
+        yields = ", ".join("yield{}".format(n) for n in range(len(ids)))
+        joinage = " JOIN ".join(subqs)
+        wheres = " AND ".join("ts{} = ts0".format(n) for n in range(1, len(ids)))
+        template = ("SELECT ts0, {} FROM {}" +
+                    " WHERE {}" +
+                    "  AND ts0 >= ? AND ts0 < ?" +
+                    " ORDER BY ts0").format(yields, joinage, wheres)
+        c = self.conn.cursor()
+        c.execute(template, tuple(ids) + (from_ts, to_ts))
+        return c.fetchall()
+
     def get_aggregate_samples(self, from_ts, to_ts, ids):
         c = self.conn.cursor()
         template = ("SELECT timestamp, sum(total_yield) FROM generation" +

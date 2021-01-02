@@ -69,3 +69,7 @@ class BaseDatabase(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_aggregate_samples(self, from_ts, to_ts, ids):
         raise NotImplementedError()
+
+    @abc.abstractmethod
+    def get_daily_yields(self, from_ts, to_ts, ids):
+        raise NotImplementedError()
