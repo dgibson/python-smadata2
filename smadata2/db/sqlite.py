@@ -117,7 +117,7 @@ class SQLiteDatabase(BaseDatabase):
         assert(len(r) == 1)
         return r[0][0]
 
-    def get_yield_at(self, ts, ids):
+    def get_yield_at_details(self, ts, ids):
         c = self.conn.cursor()
         c.execute("SELECT max(total_yield), max(timestamp),"
                   " inverter_serial FROM generation"
@@ -129,8 +129,15 @@ class SQLiteDatabase(BaseDatabase):
         if not r:
             return None
         assert(len(r) == len(ids))
-        total = 0
+        results = {}
         for yield_, timestamp, serial in r:
+            results[str(serial)] = (yield_, timestamp)
+        return results
+
+    def get_yield_at(self, ts, ids):
+        res = self.get_yield_at_details(ts, ids)
+        total = 0
+        for serial, (yield_, timestamp) in res.items():
             total += yield_
             stale = ts - timestamp
             if stale > STALE_SECONDS:
