@@ -117,8 +117,7 @@ class SQLiteDatabase(BaseDatabase):
         assert(len(r) == 1)
         return r[0][0]
 
-    def get_yield_at(self, ts, ids,
-                     sample_type=SAMPLE_INV_FAST):
+    def get_yield_at(self, ts, ids):
         c = self.conn.cursor()
         c.execute("SELECT max(total_yield), max(timestamp),"
                   " inverter_serial FROM generation"
