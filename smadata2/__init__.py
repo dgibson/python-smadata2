@@ -16,3 +16,9 @@
 # You should have received a copy of the GNU General Public License along
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+import logging.config
+from smadata2.logging_config import SMA2_LOGGING_CONFIG #only this, in case file has other unwanted content
+
+logging.config.dictConfig(SMA2_LOGGING_CONFIG)
+#log = logging.getLogger(__name__)  # once in each module
