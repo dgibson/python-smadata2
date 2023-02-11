@@ -89,7 +89,7 @@ def main(argv=sys.argv):
     db = config.database()
     for system in config.systems():
         for inv in system.inverters():
-    	    do_inv(system, inv, db)
+            do_inv(system, inv, db)
 
 if __name__ == '__main__':
     main()

@@ -2,5 +2,6 @@
 
 import smadata2.sma2mon
 
+# main entry point when running from command line
 if __name__ == '__main__':
     smadata2.sma2mon.main()
