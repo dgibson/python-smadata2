@@ -78,7 +78,7 @@ def format_datetime(dt):
 class API(object):
     """Represents the pvoutput.org web API, for a particular system
 
-    API documentation can be found at http://pvoutput.org/help.html#api-spec"""
+    API documentation can be found at https://pvoutput.org/help/api_specification.html"""
 
     def __init__(self, baseurl, apikey, sid):
         if not baseurl:
@@ -334,7 +334,7 @@ class API(object):
 
 def main():
     if len(sys.argv) == 3:
-        baseurl = "http://pvoutput.org"
+        baseurl = "https://pvoutput.org"
         apikey = sys.argv[1]
         sid = sys.argv[2]
     elif len(sys.argv) == 4:
