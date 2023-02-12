@@ -23,16 +23,38 @@ import dateutil.parser
 import dateutil.tz
 import json
 
+import logging.config
+
 from .inverter import smabluetooth
 from . import pvoutputorg
 from . import datetimeutil
 from . import db
 
-DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
+# for var in ('HOME', 'USERPROFILE', 'HOMEPATH', 'HOMEDRIVE'):
+var = os.environ.get('USERPROFILE')
+# for Linux
+# DEFAULT_CONFIG_FILE = os.path.expanduser("~/.smadata2.json")
+# DEFAULT_CONFIG_FILE = os.environ.get('USERPROFILE') + "\.smadata2.json"
+# Windows
+DEFAULT_CONFIG_FILE = "C:\workspace\.smadata2.json"
+# print(DEFAULT_CONFIG_FILE)
 
 
 class SMAData2InverterConfig(object):
+    """Represents a PV Inverter defined in the config file with properties: inverters, timezone
+
+    Args:
+        invjson (str): json string describing the inverter.
+        code (:obj:`int`, optional): Error code.
+
+    Attributes:
+        bdaddr (str): Bluetooth address in hex, like '00:80:25:2C:11:B2'
+        serial (str): Inverter serial, like
+        name (str): Inverter name, like "West-facing"
+    """
+
     def __init__(self, invjson, defname):
+        self.log = logging.getLogger(__name__)
         self.bdaddr = invjson["bluetooth"]
         self.serial = invjson["serial"]
         self.name = invjson.get("name", defname)
@@ -40,14 +62,21 @@ class SMAData2InverterConfig(object):
             self.starttime = datetimeutil.parse_time(invjson["start-time"])
         else:
             self.starttime = None
-
+        if "password" in invjson:
+            self.password = bytearray(invjson["password"],encoding="utf-8", errors="ignore")
+        else:
+            self.password = b"0000"
     def connect(self):
         return smabluetooth.Connection(self.bdaddr)
 
     def connect_and_logon(self):
+        """ Make Bluetooth connection the device
+
+        :return: conn, connection from the smabluetooth Connection
+        """
         conn = self.connect()
         conn.hello()
-        conn.logon()
+        conn.logon(password=self.password)
         return conn
 
     def __str__(self):
@@ -57,7 +86,21 @@ class SMAData2InverterConfig(object):
 
 
 class SMAData2SystemConfig(object):
+    """Represents the PV System defined in the config file with properties: inverters, timezone
+    
+    Args:
+        invjson (str): json string describing the inverter.
+        code (:obj:`int`, optional): Error code.
+
+    Attributes:
+        name (str): System name, like "Medway farm"
+        pvoutput_sid (str): SID, system identifier, from manufacturer
+        tz (str): Timezone, like
+
+    """
+
     def __init__(self, index, sysjson=None, invjson=None):
+        self.log = logging.getLogger(__name__)
         if sysjson:
             assert invjson is None
 
@@ -97,7 +140,15 @@ class SMAData2SystemConfig(object):
 
 
 class SMAData2Config(object):
+    """Reads the json config file, generates systems list, database and pvoutput 
+    
+    Attributes:
+        configfile (file): json file, defaults is DEFAULT_CONFIG_FILE above
+
+    """
+
     def __init__(self, configfile=None):
+        self.log = logging.getLogger(__name__)
         if configfile is None:
             configfile = DEFAULT_CONFIG_FILE
 

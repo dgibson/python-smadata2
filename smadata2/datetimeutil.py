@@ -52,6 +52,10 @@ def format_time(timestamp):
     st = time.localtime(timestamp)
     return time.strftime("%a, %d %b %Y %H:%M:%S %Z", st)
 
+def format_time2(timestamp):
+    st = time.localtime(timestamp)
+    return time.strftime("%d/%m/%y %X", st)
+
 
 def format_date(timestamp):
     st = time.localtime(timestamp)

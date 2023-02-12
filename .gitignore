@@ -3,3 +3,7 @@
 __pycache__
 .coverage
 __testdb__*
+.idea/
+smadata_venv/
+notes.txt
+
