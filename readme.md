@@ -9,7 +9,8 @@ The purpose of this fork initially is to make this code-base accessible to a wid
 
 - Support for a wider range of inverter data, including real-time "spot" values.
 - Sending inverter data via MQTT, for use in home automation, or remote monitoring.
-- Maintain compatability with both Linux/Raspbian and Windows.
+- Provide a ready to use Docker image (for x86 and ARM)
+- Make it possible to run the application on a ESP32 or ESP8266 
 - Consolidate information on the protocol and commands for SMA Inverters - see ``/doc/protocol.md``
 
 
